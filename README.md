@@ -17,6 +17,8 @@ Convergence and final area distribution:
 - `sphere_octant_division.ipynb`: main notebook for mesh construction, visualization, and checks.
 - `sphere_octant_division_with_area_optimizer.ipynb`: deterministic iterative optimizer to reduce spherical area variance.
 - `sphere_geometry_util.py`: utility for geodesic arc sampling on the unit sphere.
+- `sphere_division_algorithms.py`: shared mesh/area/constraint/optimizer algorithms used by both notebooks.
+- `sphere_division_visualization.py`: shared plotting utilities (octant mesh, history/distribution, before/after comparison).
 - `figures/octant_n_squared_division.svg`: generated figure from the notebook example cell (`N=16`).
 - `figures/octant_n_squared_division_with_area_optimizer.svg`: before/after mesh comparison on the sphere.
 - `figures/octant_n_squared_division_with_area_optimizer_history.svg`: convergence history (`std`, `max_rel_dev`) and optimized area histogram.

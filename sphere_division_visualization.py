@@ -2,9 +2,11 @@ from pathlib import Path
 import numpy as np
 
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-from sphere_division_algorithms import build_octant_mesh
+from sphere_division_algorithms import build_octant_mesh, spherical_triangle_area
 from sphere_geometry_util import geodesic_arc
 
 
@@ -182,3 +184,54 @@ def plot_octant_mesh_from_positions(
     save_figure(fig, save_path)
     plt.show()
     return fig, ax
+
+
+def plot_octant_mesh_from_positions_with_area_color(
+    triangle_keys,
+    positions,
+    n,
+    colormap="bwr",
+    sphere_alpha=0.18,
+    edge_lw=0.6,
+    figsize=(9, 8),
+    save_path=None,
+):
+    tris = [np.array([positions[k] for k in tri]) for tri in triangle_keys]
+    areas = np.array([spherical_triangle_area(tri[0], tri[1], tri[2]) for tri in tris], dtype=float)
+
+    vmin = float(np.min(areas))
+    vmax = float(np.max(areas))
+    if np.isclose(vmin, vmax):
+        vmax = vmin + 1e-12
+
+    norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+    cmap = cm.get_cmap(colormap)
+    facecolors = cmap(norm(areas))
+
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111, projection="3d")
+
+    _add_octant_surface(ax, alpha=sphere_alpha, resolution=60)
+    poly = Poly3DCollection(tris, facecolors=facecolors, edgecolors="none", alpha=0.9)
+    ax.add_collection3d(poly)
+
+    for tri in tris:
+        for e0, e1 in ((0, 1), (1, 2), (2, 0)):
+            arc = geodesic_arc(tri[e0], tri[e1], samples=20)
+            ax.plot(arc[:, 0], arc[:, 1], arc[:, 2], color="k", linewidth=edge_lw, alpha=0.6)
+
+    _style_octant_axes(
+        ax,
+        title=f"Octant mesh area-colored ({colormap}): N={n}, count={len(tris)}",
+        add_axes=True,
+    )
+
+    mappable = cm.ScalarMappable(norm=norm, cmap=cmap)
+    mappable.set_array([])
+    cbar = fig.colorbar(mappable, ax=ax, fraction=0.03, pad=0.08)
+    cbar.set_label("Spherical triangle area")
+
+    plt.tight_layout()
+    save_figure(fig, save_path)
+    plt.show()
+    return fig, ax, areas

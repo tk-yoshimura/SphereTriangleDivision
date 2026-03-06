@@ -1,6 +1,6 @@
 # Sphere Triangle Division
 
-A minimal notebook project for dividing a sphere octant (`x, y, z >= 0`) into `N^2` spherical triangles.
+A minimal notebook project for dividing a sphere octant (`x, y, z >= 0`) into `N²` spherical triangles.
 
 ![octant_n_squared_division](figures/octant_n_squared_division.svg)
 

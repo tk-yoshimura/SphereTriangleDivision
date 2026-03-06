@@ -1,4 +1,5 @@
 import json
+import itertools
 from pathlib import Path
 
 import numpy as np
@@ -10,20 +11,40 @@ def _sorted_keys(positions):
 
 def _expected_point_counts(n):
     full_count = (n + 1) * (n + 2) // 2
-    m = n // 2
-    compact_count = (m + 1) * (n + 1 - m)
+    compact_count = 0
+    for i in range(n + 1):
+        for j in range(n + 1 - i):
+            k = n - i - j
+            if i <= j <= k:
+                compact_count += 1
     return compact_count, full_count
+
+
+def _canonicalize_triplet(i, j, k, xyz):
+    idx = np.array([int(i), int(j), int(k)], dtype=int)
+    xyz = np.asarray(xyz, dtype=float)
+    order = np.argsort(idx, kind="stable")
+    idx_c = idx[order]
+    xyz_c = xyz[order]
+    return (int(idx_c[0]), int(idx_c[1]), int(idx_c[2])), np.asarray(xyz_c, dtype=float)
 
 
 def save_division_result(path, n, positions):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    points = []
+    canonical = {}
     for i, j, _k in _sorted_keys(positions):
-        if i > j:
+        k = n - i - j
+        key_c, xyz_c = _canonicalize_triplet(i, j, k, positions[(i, j, k)])
+        if key_c not in canonical:
+            canonical[key_c] = xyz_c
+
+    points = []
+    for i, j, k in sorted(canonical.keys()):
+        if not (i <= j <= k):
             continue
-        xyz = np.asarray(positions[(i, j, n - i - j)], dtype=float).tolist()
+        xyz = canonical[(i, j, k)].tolist()
         points.append({"i": int(i), "j": int(j), "xyz": [float(xyz[0]), float(xyz[1]), float(xyz[2])]})
 
     payload = {"N": int(n), "points": points}
@@ -40,20 +61,19 @@ def load_division_result(path):
     for rec in payload["points"]:
         i = int(rec["i"])
         j = int(rec["j"])
+        k = n - i - j
         xyz = np.asarray(rec["xyz"], dtype=float)
-
-        if i <= j:
-            canonical[(i, j)] = xyz
-        else:
-            # Backward compatibility: normalize old redundant entries.
-            canonical[(j, i)] = np.array([xyz[1], xyz[0], xyz[2]], dtype=float)
+        key_c, xyz_c = _canonicalize_triplet(i, j, k, xyz)
+        canonical[key_c] = xyz_c
 
     positions = {}
-    for (i, j), xyz in canonical.items():
-        k = n - i - j
-        positions[(i, j, k)] = xyz
-        if i < j:
-            positions[(j, i, k)] = np.array([xyz[1], xyz[0], xyz[2]], dtype=float)
+    perms = list(itertools.permutations([0, 1, 2]))
+    for (i, j, k), xyz in canonical.items():
+        idx = np.array([i, j, k], dtype=int)
+        for p in perms:
+            key_p = (int(idx[p[0]]), int(idx[p[1]]), int(idx[p[2]]))
+            xyz_p = np.array([xyz[p[0]], xyz[p[1]], xyz[p[2]]], dtype=float)
+            positions[key_p] = xyz_p
 
     return n, positions
 

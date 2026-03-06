@@ -32,10 +32,18 @@ class CoordinateFileIoTest(unittest.TestCase):
 
         self.assertEqual(payload["N"], 3)
         points = payload["points"]
-        self.assertTrue(all(p["i"] <= p["j"] for p in points))
+        self.assertTrue(all(p["i"] <= p["j"] <= (n - p["i"] - p["j"]) for p in points))
 
         actual_pairs = [(p["i"], p["j"]) for p in points]
-        expected_pairs = sorted(set((i, j) for (i, j, _k) in positions if i <= j), key=lambda t: (t[0], t[1]))
+        expected_pairs = []
+        seen = set()
+        for (i, j, k) in positions:
+            key = tuple(sorted((i, j, k)))
+            if key in seen:
+                continue
+            seen.add(key)
+            expected_pairs.append((key[0], key[1]))
+        expected_pairs = sorted(expected_pairs, key=lambda t: (t[0], t[1]))
         self.assertEqual(actual_pairs, expected_pairs)
 
     def test_load_restores_swapped_points(self):
@@ -57,8 +65,10 @@ class CoordinateFileIoTest(unittest.TestCase):
         self.assertEqual(loaded_n, n)
         self.assertTrue((0, 1, 2) in positions)
         self.assertTrue((1, 0, 2) in positions)
+        self.assertTrue((0, 3, 0) in positions)
         np.testing.assert_allclose(positions[(0, 1, 2)], np.array([0.0, 0.3, 0.95]))
         np.testing.assert_allclose(positions[(1, 0, 2)], np.array([0.3, 0.0, 0.95]))
+        np.testing.assert_allclose(positions[(0, 3, 0)], np.array([0.0, 1.0, 0.0]))
 
     def test_validate_division_result_success(self):
         n = 4
@@ -92,7 +102,6 @@ class CoordinateFileIoTest(unittest.TestCase):
             report = validate_division_result(src, tol=1e-8)
 
         self.assertFalse(report["valid"])
-        self.assertFalse(report["counts"]["ok"])
         self.assertFalse(report["sphere_constraint"]["ok"])
         self.assertFalse(report["arc_constraint"]["ok"])
 

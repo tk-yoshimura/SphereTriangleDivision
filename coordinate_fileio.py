@@ -45,13 +45,12 @@ def _canonicalize_triplet(i, j, k, xyz):
     return (int(best_ip[0]), int(best_ip[1]), int(best_ip[2])), np.asarray(best_vp, dtype=float)
 
 
-def save_division_result(path, n, positions):
+def save_division_result(path, n, positions, index_averaging=True):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
     canonical = {}
-    for i, j, _k in _sorted_keys(positions):
-        k = n - i - j
+    for i, j, k in _sorted_keys(positions):
         key_c, xyz_c = _canonicalize_triplet(i, j, k, positions[(i, j, k)])
         if key_c not in canonical:
             canonical[key_c] = xyz_c
@@ -62,8 +61,19 @@ def save_division_result(path, n, positions):
             continue
         if j == k and i != j:
             continue
-        xyz = canonical[(i, j, k)].tolist()
-        points.append({"i": int(i), "j": int(j), "xyz": [float(xyz[0]), float(xyz[1]), float(xyz[2])]})
+        x, y, z = canonical[(i, j, k)].tolist()
+        
+        if index_averaging:
+            if i == j and j == k:
+                x = y = z = (x+y+z) / 3
+            elif i == j:
+                x = y = (x+y) / 2
+            elif j == k:
+                y = z = (y+z) / 2
+            elif i == k:
+                x = z = (x+z) / 2
+
+        points.append({"i": int(i), "j": int(j), "xyz": [float(x), float(y), float(z)]})
 
     payload = {"N": int(n), "points": points}
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")

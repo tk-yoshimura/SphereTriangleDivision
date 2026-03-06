@@ -216,7 +216,7 @@ def project_center_for_vertex(center, key, n):
     return c
 
 
-def run_tension_equalizer(n, iterations=500, lr=0.1, verbose_every=25):
+def run_tension_equalizer(n, iterations=500, lr=0.2, verbose_every=25):
     points0, triangle_keys, _ = build_octant_mesh(n)
     point_keys = sorted(points0.keys(), key=lambda t: (t[0] + t[1], t[0], t[1], t[2]))
 

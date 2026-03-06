@@ -8,6 +8,13 @@ def _sorted_keys(positions):
     return sorted(positions.keys(), key=lambda t: (t[0], t[1], t[2]))
 
 
+def _expected_point_counts(n):
+    full_count = (n + 1) * (n + 2) // 2
+    m = n // 2
+    compact_count = (m + 1) * (n + 1 - m)
+    return compact_count, full_count
+
+
 def save_division_result(path, n, positions):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -49,3 +56,70 @@ def load_division_result(path):
             positions[(j, i, k)] = np.array([xyz[1], xyz[0], xyz[2]], dtype=float)
 
     return n, positions
+
+
+def validate_division_result(path, tol=1e-12):
+    path = Path(path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+
+    n = int(payload["N"])
+    point_records = payload.get("points", [])
+    stored_count = len(point_records)
+    expected_compact, expected_full = _expected_point_counts(n)
+
+    index_errors = []
+    for rec in point_records:
+        i = int(rec["i"])
+        j = int(rec["j"])
+        if i < 0 or j < 0 or i > n or j > n or i + j > n:
+            index_errors.append({"i": i, "j": j})
+
+    _, positions = load_division_result(path)
+    full_count = len(positions)
+
+    sphere_violations = []
+    arc_violations = []
+    for (i, j, k), v in positions.items():
+        x, y, z = np.asarray(v, dtype=float)
+        norm = float(np.linalg.norm([x, y, z]))
+        if abs(norm - 1.0) > tol:
+            sphere_violations.append({"key": [i, j, k], "norm": norm})
+
+        if i == 0 and abs(x) > tol:
+            arc_violations.append({"key": [i, j, k], "axis": "x", "value": float(x)})
+        if j == 0 and abs(y) > tol:
+            arc_violations.append({"key": [i, j, k], "axis": "y", "value": float(y)})
+        if k == 0 and abs(z) > tol:
+            arc_violations.append({"key": [i, j, k], "axis": "z", "value": float(z)})
+
+    counts_ok = stored_count == expected_compact and full_count == expected_full and len(index_errors) == 0
+    sphere_ok = len(sphere_violations) == 0
+    arc_ok = len(arc_violations) == 0
+    valid = counts_ok and sphere_ok and arc_ok
+
+    return {
+        "valid": valid,
+        "N": n,
+        "counts": {
+            "stored_points": stored_count,
+            "expected_stored_points": expected_compact,
+            "expanded_points": full_count,
+            "expected_expanded_points": expected_full,
+            "ok": counts_ok,
+        },
+        "index_check": {
+            "ok": len(index_errors) == 0,
+            "error_count": len(index_errors),
+            "errors_preview": index_errors[:10],
+        },
+        "sphere_constraint": {
+            "ok": sphere_ok,
+            "violation_count": len(sphere_violations),
+            "violations_preview": sphere_violations[:10],
+        },
+        "arc_constraint": {
+            "ok": arc_ok,
+            "violation_count": len(arc_violations),
+            "violations_preview": arc_violations[:10],
+        },
+    }

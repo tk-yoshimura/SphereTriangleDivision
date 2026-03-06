@@ -12,16 +12,29 @@ Convergence and final area distribution:
 
 ![octant_n_squared_division_with_area_optimizer_history](figures/octant_n_squared_division_with_area_optimizer_history.svg)
 
+Area-colored spherical triangles (`bwr`, blue=smaller area, red=larger area):
+
+Before optimization:
+
+![octant_mesh_before_area_optimizer_16](figures/octant_mesh_before_area_optimizer_16.svg)
+
+After optimization:
+
+![octant_mesh_after_area_optimizer_16](figures/octant_mesh_after_area_optimizer_16.svg)
+
 ## Files
 
 - `sphere_octant_division.ipynb`: main notebook for mesh construction, visualization, and checks.
 - `sphere_octant_division_with_area_optimizer.ipynb`: deterministic iterative optimizer to reduce spherical area variance.
+- `division_result_viewer.ipynb`: loads saved division JSON and visualizes spherical triangles with area-based coloring (`bwr`), including before/after optimization views.
 - `sphere_geometry_util.py`: utility for geodesic arc sampling on the unit sphere.
 - `sphere_division_algorithms.py`: shared mesh/area/constraint/optimizer algorithms used by both notebooks.
 - `sphere_division_visualization.py`: shared plotting utilities (octant mesh, history/distribution, before/after comparison).
 - `figures/octant_n_squared_division.svg`: generated figure from the notebook example cell (`N=16`).
 - `figures/octant_n_squared_division_with_area_optimizer.svg`: before/after mesh comparison on the sphere.
 - `figures/octant_n_squared_division_with_area_optimizer_history.svg`: convergence history (`std`, `max_rel_dev`) and optimized area histogram.
+- `figures/octant_mesh_before_area_optimizer_16.svg`: area-colored (`bwr`) mesh before optimization.
+- `figures/octant_mesh_after_area_optimizer_16.svg`: area-colored (`bwr`) mesh loaded from `results/division_result_16.json`.
 
 ## How to run
 
@@ -33,6 +46,10 @@ Convergence and final area distribution:
 5. Run all cells to generate:
    - `figures/octant_n_squared_division_with_area_optimizer.svg`
    - `figures/octant_n_squared_division_with_area_optimizer_history.svg`
+6. Open `division_result_viewer.ipynb`.
+7. Run all cells to generate:
+   - `figures/octant_mesh_before_area_optimizer_16.svg`
+   - `figures/octant_mesh_after_area_optimizer_16.svg`
 
 ## Area optimization notes
 

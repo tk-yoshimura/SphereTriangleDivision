@@ -216,12 +216,14 @@ def project_center_for_vertex(center, key, n):
     return c
 
 
-def run_tension_equalizer(n, iterations=500, lr=0.2, verbose_every=25):
+def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_every=25):
     points0, triangle_keys, _ = build_octant_mesh(n)
     point_keys = sorted(points0.keys(), key=lambda t: (t[0] + t[1], t[0], t[1], t[2]))
 
     positions = {k: project_vertex(normalize(points0[k]), k, n) for k in point_keys}
     history = []
+
+    std_area_prev, max_rel_prev = np.inf, np.inf
 
     for it in range(1, iterations + 1):
         tri_areas = np.empty(len(triangle_keys), dtype=float)
@@ -237,10 +239,16 @@ def run_tension_equalizer(n, iterations=500, lr=0.2, verbose_every=25):
         max_rel = float(np.max(np.abs(tri_areas - mean_area) / max(mean_area, 1e-15)))
         history.append((it, mean_area, std_area, max_rel))
 
-        if verbose_every and (it % verbose_every == 0 or it == iterations):
-            print(f"iter={it:4d} mean={mean_area:.8e} std={std_area:.8e} max_rel={max_rel:.4e}")
+        eps = 1e-14
+        if lr_decay and std_area_prev / std_area - 1 <= eps and max_rel_prev / max_rel - 1 <= eps:
+            lr *= 0.99
+        std_area_prev = std_area
+        max_rel_prev = max_rel
 
-        if it == iterations:
+        if verbose_every and (it % verbose_every == 0 or it == iterations):
+            print(f"iter={it:5d} std={std_area:.12e} max_rel={max_rel:.8e} lr={lr:.4e}")
+
+        if it == iterations or lr < 1e-15:
             break
 
         proposals = {k: [] for k in point_keys}

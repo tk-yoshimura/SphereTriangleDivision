@@ -23,10 +23,26 @@ def _expected_point_counts(n):
 def _canonicalize_triplet(i, j, k, xyz):
     idx = np.array([int(i), int(j), int(k)], dtype=int)
     xyz = np.asarray(xyz, dtype=float)
-    order = np.argsort(idx, kind="stable")
-    idx_c = idx[order]
-    xyz_c = xyz[order]
-    return (int(idx_c[0]), int(idx_c[1]), int(idx_c[2])), np.asarray(xyz_c, dtype=float)
+
+    candidates = []
+    for p in itertools.permutations([0, 1, 2]):
+        ip = np.array([idx[p[0]], idx[p[1]], idx[p[2]]], dtype=int)
+        vp = np.array([xyz[p[0]], xyz[p[1]], xyz[p[2]]], dtype=float)
+
+        # Keep i<=j, and drop redundant j==k (except all-equal).
+        if ip[0] > ip[1]:
+            continue
+        if ip[1] == ip[2] and ip[0] != ip[1]:
+            continue
+        candidates.append((ip, vp))
+
+    if not candidates:
+        # Fallback for safety; should not happen for valid lattice indices.
+        return (int(idx[0]), int(idx[1]), int(idx[2])), np.asarray(xyz, dtype=float)
+
+    # Prefer i==j representative, then lexicographic order.
+    best_ip, best_vp = min(candidates, key=lambda t: (0 if t[0][0] == t[0][1] else 1, int(t[0][0]), int(t[0][1]), int(t[0][2])))
+    return (int(best_ip[0]), int(best_ip[1]), int(best_ip[2])), np.asarray(best_vp, dtype=float)
 
 
 def save_division_result(path, n, positions):
@@ -42,7 +58,9 @@ def save_division_result(path, n, positions):
 
     points = []
     for i, j, k in sorted(canonical.keys()):
-        if not (i <= j <= k):
+        if i > j:
+            continue
+        if j == k and i != j:
             continue
         xyz = canonical[(i, j, k)].tolist()
         points.append({"i": int(i), "j": int(j), "xyz": [float(xyz[0]), float(xyz[1]), float(xyz[2])]})

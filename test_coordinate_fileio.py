@@ -32,7 +32,8 @@ class CoordinateFileIoTest(unittest.TestCase):
 
         self.assertEqual(payload["N"], 3)
         points = payload["points"]
-        self.assertTrue(all(p["i"] <= p["j"] <= (n - p["i"] - p["j"]) for p in points))
+        self.assertTrue(all(p["i"] <= p["j"] for p in points))
+        self.assertTrue(all(not ((n - p["i"] - p["j"]) == p["j"] and p["i"] != p["j"]) for p in points))
 
         actual_pairs = [(p["i"], p["j"]) for p in points]
         expected_pairs = []
@@ -45,6 +46,23 @@ class CoordinateFileIoTest(unittest.TestCase):
             expected_pairs.append((key[0], key[1]))
         expected_pairs = sorted(expected_pairs, key=lambda t: (t[0], t[1]))
         self.assertEqual(actual_pairs, expected_pairs)
+
+    def test_save_excludes_j_eq_k_representation(self):
+        n = 4
+        positions = {
+            (1, 1, 2): np.array([0.4, 0.4, 0.82]),
+            (1, 2, 1): np.array([0.4, 0.82, 0.4]),
+            (2, 1, 1): np.array([0.82, 0.4, 0.4]),
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "division_result_4.json"
+            save_division_result(out, n, positions)
+            payload = json.loads(out.read_text(encoding="utf-8"))
+
+        self.assertEqual(len(payload["points"]), 1)
+        rec = payload["points"][0]
+        self.assertEqual((rec["i"], rec["j"]), (1, 1))  # (1,2,1) (j==k) is not stored.
 
     def test_load_restores_swapped_points(self):
         n = 3
@@ -80,6 +98,24 @@ class CoordinateFileIoTest(unittest.TestCase):
             save_division_result(out, n, positions)
             report = validate_division_result(out, tol=1e-8)
 
+        self.assertTrue(report["valid"])
+        self.assertTrue(report["counts"]["ok"])
+        self.assertTrue(report["sphere_constraint"]["ok"])
+        self.assertTrue(report["arc_constraint"]["ok"])
+
+    def test_validate_division_result_success_n6(self):
+        n = 6
+        points, _, _ = build_octant_mesh(n)
+        positions = {k: project_vertex(v, k, n) for k, v in points.items()}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "division_result_6.json"
+            save_division_result(out, n, positions)
+            loaded_n, loaded_positions = load_division_result(out)
+            report = validate_division_result(out, tol=1e-8)
+
+        self.assertEqual(loaded_n, n)
+        self.assertEqual(len(loaded_positions), (n + 1) * (n + 2) // 2)
         self.assertTrue(report["valid"])
         self.assertTrue(report["counts"]["ok"])
         self.assertTrue(report["sphere_constraint"]["ok"])

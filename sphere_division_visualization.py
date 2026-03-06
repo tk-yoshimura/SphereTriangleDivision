@@ -152,3 +152,33 @@ def plot_before_after_mesh_comparison(
     save_figure(fig, save_path)
     plt.show()
     return fig, (ax_l, ax_r)
+
+
+def plot_octant_mesh_from_positions(
+    triangle_keys,
+    positions,
+    n,
+    sphere_alpha=0.18,
+    edge_lw=0.8,
+    figsize=(8, 8),
+    save_path=None,
+):
+    tris = [np.array([positions[k] for k in tri]) for tri in triangle_keys]
+
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111, projection="3d")
+
+    _add_octant_surface(ax, alpha=sphere_alpha, resolution=60)
+    poly = Poly3DCollection(tris, facecolors="cornflowerblue", edgecolors="none", alpha=0.25)
+    ax.add_collection3d(poly)
+
+    for tri in tris:
+        for e0, e1 in ((0, 1), (1, 2), (2, 0)):
+            arc = geodesic_arc(tri[e0], tri[e1], samples=20)
+            ax.plot(arc[:, 0], arc[:, 1], arc[:, 2], color="k", linewidth=edge_lw, alpha=0.75)
+
+    _style_octant_axes(ax, title=f"Octant spherical-triangle mesh from file: N={n}, count={len(tris)}", add_axes=True)
+    plt.tight_layout()
+    save_figure(fig, save_path)
+    plt.show()
+    return fig, ax

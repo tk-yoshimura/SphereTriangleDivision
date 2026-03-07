@@ -136,9 +136,19 @@ def spherical_triangle_area(a, b, c):
     a = normalize(a)
     b = normalize(b)
     c = normalize(c)
-    det = abs(np.dot(a, np.cross(b, c)))
-    denom = 1.0 + np.dot(a, b) + np.dot(b, c) + np.dot(c, a)
-    return 2.0 * np.arctan2(det, max(denom, 1e-15))
+    cross_bc = np.cross(b, c)
+
+    if a.ndim == 1:
+        det = abs(np.dot(a, cross_bc))
+        denom = 1.0 + np.dot(a, b) + np.dot(b, c) + np.dot(c, a)
+        return 2.0 * np.arctan2(det, max(denom, 1e-15))
+
+    if a.ndim == 2:
+        det = np.abs(np.sum(a * cross_bc, axis=1))
+        denom = 1.0 + np.sum(a * b, axis=1) + np.sum(b * c, axis=1) + np.sum(c * a, axis=1)
+        return 2.0 * np.arctan2(det, np.maximum(denom, 1e-15))
+
+    raise ValueError("spherical_triangle_area expects 1D vectors or 2D arrays of row vectors.")
 
 
 def spherical_triangle_areas(positions, triangle_keys):
@@ -223,14 +233,16 @@ def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_ever
 
     std_area_prev, max_rel_prev = np.inf, np.inf
 
-    for it in range(1, iterations + 1):
-        tri_areas = np.empty(len(triangle_keys), dtype=float)
-        tri_centers = []
+    tri_va = np.empty((len(triangle_keys), 3), dtype=float)
+    tri_vb = np.empty((len(triangle_keys), 3), dtype=float)
+    tri_vc = np.empty((len(triangle_keys), 3), dtype=float)
 
+    for it in range(1, iterations + 1):
         for t_id, tri in enumerate(triangle_keys):
-            a, b, c = [positions[i, j] for i, j in tri]
-            tri_areas[t_id] = spherical_triangle_area(a, b, c)
-            tri_centers.append(normalize(a + b + c))
+            tri_va[t_id], tri_vb[t_id], tri_vc[t_id] = [positions[i, j] for i, j in tri]
+
+        tri_areas = spherical_triangle_area(tri_va, tri_vb, tri_vc)
+        tri_centers = normalize(tri_va + tri_vb + tri_vc)
 
         mean_area = float(tri_areas.mean())
         std_area = float(tri_areas.std(ddof=0))

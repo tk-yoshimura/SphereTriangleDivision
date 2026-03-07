@@ -3,10 +3,19 @@ import numpy as np
 
 def normalize(v):
     v = np.asarray(v, dtype=float)
-    n = np.linalg.norm(v)
-    if n == 0.0:
-        raise ValueError('Zero vector cannot be normalized.')
-    return v / n
+    if v.ndim == 1:
+        n = np.linalg.norm(v)
+        if n == 0.0:
+            raise ValueError('Zero vector cannot be normalized.')
+        return v / n
+
+    if v.ndim == 2:
+        n = np.linalg.norm(v, axis=1, keepdims=True)
+        if np.any(n == 0.0):
+            raise ValueError('Zero vector cannot be normalized.')
+        return v / n
+
+    raise ValueError('normalize expects a 1D vector or a 2D array of row vectors.')
 
 
 def slerp(p0, p1, t):

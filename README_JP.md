@@ -1,6 +1,6 @@
 # Sphere Triangle Division（日本語版）
 
-球面八分体（`x, y, z >= 0`）を `N²` 個の球面三角形に分割する、最小構成のノートブックプロジェクト。
+球面八分体（`x, y, z >= 0`）を `N²` 個の球面三角形に分割するノートブックプロジェクト。
 
 ![octant_n_squared_division](figures/octant_n_squared_division.svg)
 

@@ -73,7 +73,7 @@ def build_octant_mesh(n):
 
 def build_point_index(points):
     n = points.shape[0] - 1
-    point_keys = sorted(_iter_valid_ij(n), key=lambda t: (t[0] + t[1], t[0], t[1]))
+    point_keys = list(_iter_valid_ij(n))
     point_index = {key: idx for idx, key in enumerate(point_keys)}
     return point_keys, point_index
 
@@ -129,11 +129,11 @@ def lattice_permutation_error(n):
 def positions_permutation_error(positions):
     n = positions.shape[0] - 1
     perms = list(itertools.permutations([0, 1, 2]))
-    point_keys = sorted(_iter_valid_ij(n), key=lambda t: (t[0] + t[1], t[0], t[1]))
+    
     max_perm_err = 0.0
     worst_case = None
 
-    for i, j in point_keys:
+    for i, j in _iter_valid_ij(n):
         k = _k_from_ij(n, i, j)
         base = positions[i, j]
         idx = np.array([i, j, k], dtype=int)
@@ -230,7 +230,7 @@ def project_center_for_vertex(center, key, n):
 
 def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_every=25):
     points0, triangle_keys, _ = build_octant_mesh(n)
-    point_keys = sorted(_iter_valid_ij(n), key=lambda t: (t[0] + t[1], t[0], t[1]))
+    point_keys = list(_iter_valid_ij(n))
 
     positions = np.full_like(points0, np.nan)
     for i, j in point_keys:
@@ -275,7 +275,7 @@ def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_ever
                 vi, vj = vk
                 v = positions[vi, vj]
                 c = project_center_for_vertex(center, vk, n)
-                delta = lr * rel * (c - v)
+                delta = rel * (c - v)
                 move_sum[vi, vj] += delta
                 move_count[vi, vj] += 1
 
@@ -285,7 +285,7 @@ def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_ever
                 move = move_sum[i, j] / float(move_count[i, j])
             else:
                 move = np.zeros(3, dtype=float)
-            new_positions[i, j] = project_vertex(positions[i, j] + move, (i, j), n)
+            new_positions[i, j] = project_vertex(positions[i, j] + lr * move, (i, j), n)
         positions = new_positions
 
     return positions, triangle_keys, np.array(history, dtype=float)

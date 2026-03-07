@@ -73,4 +73,4 @@
 ## 現在のサンプル出力
 
 - `N = 16`
-- triangle count: `256`（`N^2`）
+- triangle count: `256`（`N²`）

@@ -73,4 +73,4 @@ After optimization:
 ## Current example output
 
 - `N = 16`
-- triangle count: `256` (`N^2`)
+- triangle count: `256` (`N²`)

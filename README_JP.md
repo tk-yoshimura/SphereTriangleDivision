@@ -69,8 +69,3 @@
 - 図の見方:
   - `...with_area_optimizer.svg`: 左が最適化前、右が最適化後
   - `...with_area_optimizer_history.svg`: 左が収束（`std`, `max_rel_dev`）、右が最終球面面積分布
-
-## 現在のサンプル出力
-
-- `N = 16`
-- triangle count: `256`（`N²`）

@@ -69,8 +69,3 @@ After optimization:
 - Interpretation of figures:
   - `...with_area_optimizer.svg`: left is before optimization, right is after optimization.
   - `...with_area_optimizer_history.svg`: left plot shows convergence (`std` and `max_rel_dev`), right plot shows final spherical-area distribution.
-
-## Current example output
-
-- `N = 16`
-- triangle count: `256` (`N²`)

@@ -130,8 +130,8 @@ def plot_before_after_mesh_comparison(
     save_path=None,
     figsize=(14, 6),
 ):
-    tris_before = [np.array([positions_before[k] for k in tri]) for tri in triangle_keys]
-    tris_after = [np.array([positions_after[k] for k in tri]) for tri in triangle_keys]
+    tris_before = [np.array([positions_before[i, j] for i, j in tri]) for tri in triangle_keys]
+    tris_after = [np.array([positions_after[i, j] for i, j in tri]) for tri in triangle_keys]
 
     fig = plt.figure(figsize=figsize)
     ax_l = fig.add_subplot(121, projection="3d")
@@ -165,7 +165,7 @@ def plot_octant_mesh_from_positions(
     figsize=(8, 8),
     save_path=None,
 ):
-    tris = [np.array([positions[k] for k in tri]) for tri in triangle_keys]
+    tris = [np.array([positions[i, j] for i, j in tri]) for tri in triangle_keys]
 
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111, projection="3d")
@@ -196,7 +196,7 @@ def plot_octant_mesh_from_positions_with_area_color(
     figsize=(9, 8),
     save_path=None,
 ):
-    tris = [np.array([positions[k] for k in tri]) for tri in triangle_keys]
+    tris = [np.array([positions[i, j] for i, j in tri]) for tri in triangle_keys]
     areas = np.array([spherical_triangle_area(tri[0], tri[1], tri[2]) for tri in tris], dtype=float)
 
     vmin = float(np.min(areas))

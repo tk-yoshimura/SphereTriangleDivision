@@ -4,6 +4,21 @@ import numpy as np
 from sphere_geometry_util import normalize
 
 
+def _validate_n(n):
+    if n < 1:
+        raise ValueError("N must be >= 1.")
+
+
+def _iter_valid_ij(n):
+    for i in range(n + 1):
+        for j in range(n + 1 - i):
+            yield i, j
+
+
+def _k_from_ij(n, i, j):
+    return n - i - j
+
+
 def lattice_to_octant_point(i, j, k, n):
     ring_ij, ring_jk, ring_ki = i + j, j + k, k + i
 
@@ -26,31 +41,25 @@ def lattice_to_octant_point(i, j, k, n):
 
 
 def build_octant_points(n):
-    if n < 1:
-        raise ValueError("N must be >= 1.")
-
-    points = {}
-    for i in range(n + 1):
-        for j in range(n + 1 - i):
-            k = n - i - j
-            points[(i, j, k)] = lattice_to_octant_point(i, j, k, n)
+    _validate_n(n)
+    points = np.full((n + 1, n + 1, 3), np.nan, dtype=float)
+    for i, j in _iter_valid_ij(n):
+        points[i, j] = lattice_to_octant_point(i, j, _k_from_ij(n, i, j), n)
     return points
 
 
 def build_octant_triangle_keys(n):
-    if n < 1:
-        raise ValueError("N must be >= 1.")
-
+    _validate_n(n)
     triangles = []
     for i in range(n):
         for j in range(n - i):
-            k = n - i - j
-            a = (i, j, k)
-            b = (i + 1, j, k - 1)
-            c = (i, j + 1, k - 1)
+            k = _k_from_ij(n, i, j)
+            a = (i, j)
+            b = (i + 1, j)
+            c = (i, j + 1)
             triangles.append((a, b, c))
             if k >= 2:
-                d = (i + 1, j + 1, k - 2)
+                d = (i + 1, j + 1)
                 triangles.append((b, d, c))
     return triangles
 
@@ -58,12 +67,13 @@ def build_octant_triangle_keys(n):
 def build_octant_mesh(n):
     points = build_octant_points(n)
     triangle_keys = build_octant_triangle_keys(n)
-    tri_xyz = [np.array([points[idx] for idx in tri]) for tri in triangle_keys]
+    tri_xyz = [np.array([points[i, j] for i, j in tri]) for tri in triangle_keys]
     return points, triangle_keys, tri_xyz
 
 
 def build_point_index(points):
-    point_keys = sorted(points.keys(), key=lambda t: (t[0] + t[1], t[0], t[1], t[2]))
+    n = points.shape[0] - 1
+    point_keys = sorted(_iter_valid_ij(n), key=lambda t: (t[0] + t[1], t[0], t[1]))
     point_index = {key: idx for idx, key in enumerate(point_keys)}
     return point_keys, point_index
 
@@ -79,7 +89,7 @@ def triangle_side_lengths(tri):
 def planar_triangle_areas(points, triangle_keys):
     areas = []
     for tri in triangle_keys:
-        a, b, c = [points[v] for v in tri]
+        a, b, c = [points[i, j] for i, j in tri]
         areas.append(0.5 * np.linalg.norm(np.cross(b - a, c - a)))
     return np.array(areas, dtype=float)
 
@@ -87,7 +97,7 @@ def planar_triangle_areas(points, triangle_keys):
 def outward_normals_check(points, triangle_keys):
     inward_ids = []
     for t_id, tri in enumerate(triangle_keys):
-        i, j, k = [points[v] for v in tri]
+        i, j, k = [points[x, y] for x, y in tri]
         normal = np.cross(j - i, k - i)
         centroid = (i + j + k) / 3.0
         if np.dot(normal, centroid) <= 0.0:
@@ -100,41 +110,41 @@ def lattice_permutation_error(n):
     max_perm_err = 0.0
     worst_case = None
 
-    for i in range(n + 1):
-        for j in range(n + 1 - i):
-            k = n - i - j
-            v_base = lattice_to_octant_point(i, j, k, n)
-            base_idx = np.array([i, j, k], dtype=int)
+    for i, j in _iter_valid_ij(n):
+        k = _k_from_ij(n, i, j)
+        v_base = lattice_to_octant_point(i, j, k, n)
+        base_idx = np.array([i, j, k], dtype=int)
 
-            for p in perms:
-                ip = base_idx[list(p)]
-                v_perm_input = lattice_to_octant_point(int(ip[0]), int(ip[1]), int(ip[2]), n)
-                v_perm_output = v_base[list(p)]
-                err = float(np.linalg.norm(v_perm_input - v_perm_output))
-                if err > max_perm_err:
-                    max_perm_err = err
-                    worst_case = ((i, j, k), p)
+        for p in perms:
+            ip = base_idx[list(p)]
+            v_perm_input = lattice_to_octant_point(int(ip[0]), int(ip[1]), int(ip[2]), n)
+            v_perm_output = v_base[list(p)]
+            err = float(np.linalg.norm(v_perm_input - v_perm_output))
+            if err > max_perm_err:
+                max_perm_err = err
+                worst_case = ((i, j, k), p)
     return max_perm_err, worst_case
 
 
 def positions_permutation_error(positions):
+    n = positions.shape[0] - 1
     perms = list(itertools.permutations([0, 1, 2]))
-    point_keys = sorted(positions.keys(), key=lambda t: (t[0] + t[1], t[0], t[1], t[2]))
+    point_keys = sorted(_iter_valid_ij(n), key=lambda t: (t[0] + t[1], t[0], t[1]))
     max_perm_err = 0.0
     worst_case = None
 
-    for key in point_keys:
-        base = positions[key]
-        idx = np.array(key, dtype=int)
+    for i, j in point_keys:
+        k = _k_from_ij(n, i, j)
+        base = positions[i, j]
+        idx = np.array([i, j, k], dtype=int)
         for p in perms:
             kp_arr = idx[list(p)]
-            kp = (int(kp_arr[0]), int(kp_arr[1]), int(kp_arr[2]))
-            lhs = positions[kp]
+            lhs = positions[int(kp_arr[0]), int(kp_arr[1])]
             rhs = base[list(p)]
             err = float(np.linalg.norm(lhs - rhs))
             if err > max_perm_err:
                 max_perm_err = err
-                worst_case = (key, p)
+                worst_case = ((i, j), p)
     return max_perm_err, worst_case
 
 
@@ -150,13 +160,14 @@ def spherical_triangle_area(a, b, c):
 def spherical_triangle_areas(positions, triangle_keys):
     areas = []
     for tri in triangle_keys:
-        a, b, c = [positions[k] for k in tri]
+        a, b, c = [positions[i, j] for i, j in tri]
         areas.append(spherical_triangle_area(a, b, c))
     return np.array(areas, dtype=float)
 
 
 def classify_vertex_constraint(key, n):
-    i, j, k = key
+    i, j = key
+    k = _k_from_ij(n, i, j)
     zeros = [i == 0, j == 0, k == 0]
     zc = sum(zeros)
 
@@ -175,7 +186,7 @@ def project_vertex(v, key, n):
     mode, axis = classify_vertex_constraint(key, n)
 
     if mode == "corner":
-        i, j, _ = key
+        i, j = key
         if i == n:
             return np.array([1.0, 0.0, 0.0])
         if j == n:
@@ -194,7 +205,8 @@ def project_vertex(v, key, n):
 
     norm = np.linalg.norm(v)
     if norm <= 0.0:
-        v = normalize(lattice_to_octant_point(*key, n))
+        i, j = key
+        v = normalize(lattice_to_octant_point(i, j, _k_from_ij(n, i, j), n))
         mode2, axis2 = classify_vertex_constraint(key, n)
         if mode2 == "edge":
             v[axis2] = 0.0
@@ -218,9 +230,11 @@ def project_center_for_vertex(center, key, n):
 
 def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_every=25):
     points0, triangle_keys, _ = build_octant_mesh(n)
-    point_keys = sorted(points0.keys(), key=lambda t: (t[0] + t[1], t[0], t[1], t[2]))
+    point_keys = sorted(_iter_valid_ij(n), key=lambda t: (t[0] + t[1], t[0], t[1]))
 
-    positions = {k: project_vertex(normalize(points0[k]), k, n) for k in point_keys}
+    positions = np.full_like(points0, np.nan)
+    for i, j in point_keys:
+        positions[i, j] = project_vertex(normalize(points0[i, j]), (i, j), n)
     history = []
 
     std_area_prev, max_rel_prev = np.inf, np.inf
@@ -230,7 +244,7 @@ def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_ever
         tri_centers = []
 
         for t_id, tri in enumerate(triangle_keys):
-            a, b, c = [positions[k] for k in tri]
+            a, b, c = [positions[i, j] for i, j in tri]
             tri_areas[t_id] = spherical_triangle_area(a, b, c)
             tri_centers.append(normalize(a + b + c))
 
@@ -251,23 +265,27 @@ def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_ever
         if it == iterations or lr < 1e-15:
             break
 
-        proposals = {k: [] for k in point_keys}
+        move_sum = np.zeros_like(positions)
+        move_count = np.zeros((n + 1, n + 1), dtype=int)
+
         for t_id, tri in enumerate(triangle_keys):
             rel = (tri_areas[t_id] - mean_area) / max(mean_area, 1e-15)
             center = tri_centers[t_id]
             for vk in tri:
-                v = positions[vk]
+                vi, vj = vk
+                v = positions[vi, vj]
                 c = project_center_for_vertex(center, vk, n)
                 delta = lr * rel * (c - v)
-                proposals[vk].append(delta)
+                move_sum[vi, vj] += delta
+                move_count[vi, vj] += 1
 
-        new_positions = {}
-        for k in point_keys:
-            if proposals[k]:
-                move = np.mean(np.vstack(proposals[k]), axis=0)
+        new_positions = np.full_like(positions, np.nan)
+        for i, j in point_keys:
+            if move_count[i, j] > 0:
+                move = move_sum[i, j] / float(move_count[i, j])
             else:
                 move = np.zeros(3, dtype=float)
-            new_positions[k] = project_vertex(positions[k] + move, k, n)
+            new_positions[i, j] = project_vertex(positions[i, j] + move, (i, j), n)
         positions = new_positions
 
     return positions, triangle_keys, np.array(history, dtype=float)

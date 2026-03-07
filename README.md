@@ -36,6 +36,13 @@ After optimization:
 - `figures/octant_mesh_before_area_optimizer_16.svg`: area-colored (`bwr`) mesh before optimization.
 - `figures/octant_mesh_after_area_optimizer_16.svg`: area-colored (`bwr`) mesh loaded from `results/division_result_16.json`.
 
+## Coordinate Data Format
+
+- Point coordinates are represented as a NumPy array with shape `(N+1, N+1, 3)`.
+- Use `positions[i, j]` (or `points[i, j]`) to access xyz.
+- Index pairs with `i + j > N` are invalid and stored as `NaN`; they are never used in algorithms.
+- Triangle vertex keys are `(i, j)` tuples, and `k` is derived as `k = N - i - j` when needed.
+
 ## How to run
 
 1. Open `sphere_octant_division.ipynb`.

@@ -5,9 +5,11 @@ from coordinate_fileio import load_division_result
 
 def division_positions_to_array(n, positions):
     rows = []
-    for i, j, k in sorted(positions.keys(), key=lambda t: (t[0], t[1], t[2])):
-        x, y, z = np.asarray(positions[(i, j, k)], dtype=float)
-        rows.append([i / n, j / n, k / n, x, y, z])
+    for i in range(n + 1):
+        for j in range(n + 1 - i):
+            k = n - i - j
+            x, y, z = np.asarray(positions[i, j], dtype=float)
+            rows.append([i / n, j / n, k / n, x, y, z])
     return np.asarray(rows, dtype=float)
 
 

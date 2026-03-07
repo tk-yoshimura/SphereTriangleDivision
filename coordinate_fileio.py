@@ -5,18 +5,19 @@ from pathlib import Path
 import numpy as np
 
 
-def _sorted_keys(positions):
-    return sorted(positions.keys(), key=lambda t: (t[0], t[1], t[2]))
+def _iter_valid_ij(n):
+    for i in range(n + 1):
+        for j in range(n + 1 - i):
+            yield i, j
 
 
 def _expected_point_counts(n):
     full_count = (n + 1) * (n + 2) // 2
     compact_count = 0
-    for i in range(n + 1):
-        for j in range(n + 1 - i):
-            k = n - i - j
-            if i <= j <= k:
-                compact_count += 1
+    for i, j in _iter_valid_ij(n):
+        k = n - i - j
+        if i <= j <= k:
+            compact_count += 1
     return compact_count, full_count
 
 
@@ -29,7 +30,6 @@ def _canonicalize_triplet(i, j, k, xyz):
         ip = np.array([idx[p[0]], idx[p[1]], idx[p[2]]], dtype=int)
         vp = np.array([xyz[p[0]], xyz[p[1]], xyz[p[2]]], dtype=float)
 
-        # Keep i<=j, and drop redundant j==k (except all-equal).
         if ip[0] > ip[1]:
             continue
         if ip[1] == ip[2] and ip[0] != ip[1]:
@@ -37,21 +37,35 @@ def _canonicalize_triplet(i, j, k, xyz):
         candidates.append((ip, vp))
 
     if not candidates:
-        # Fallback for safety; should not happen for valid lattice indices.
         return (int(idx[0]), int(idx[1]), int(idx[2])), np.asarray(xyz, dtype=float)
 
-    # Prefer i==j representative, then lexicographic order.
-    best_ip, best_vp = min(candidates, key=lambda t: (0 if t[0][0] == t[0][1] else 1, int(t[0][0]), int(t[0][1]), int(t[0][2])))
+    best_ip, best_vp = min(
+        candidates,
+        key=lambda t: (0 if t[0][0] == t[0][1] else 1, int(t[0][0]), int(t[0][1]), int(t[0][2])),
+    )
     return (int(best_ip[0]), int(best_ip[1]), int(best_ip[2])), np.asarray(best_vp, dtype=float)
 
 
+def _validate_positions_shape(n, positions):
+    if not isinstance(positions, np.ndarray):
+        raise TypeError("positions must be a numpy.ndarray.")
+    expected_shape = (n + 1, n + 1, 3)
+    if positions.shape != expected_shape:
+        raise ValueError(f"positions shape must be {expected_shape}, got {positions.shape}.")
+
+
 def save_division_result(path, n, positions, index_averaging=True):
+    _validate_positions_shape(n, positions)
+
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
     canonical = {}
-    for i, j, k in _sorted_keys(positions):
-        key_c, xyz_c = _canonicalize_triplet(i, j, k, positions[(i, j, k)])
+    for i, j in _iter_valid_ij(n):
+        if np.isnan(positions[i, j]).any():
+            continue
+        k = n - i - j
+        key_c, xyz_c = _canonicalize_triplet(i, j, k, positions[i, j])
         if key_c not in canonical:
             canonical[key_c] = xyz_c
 
@@ -62,16 +76,16 @@ def save_division_result(path, n, positions, index_averaging=True):
         if j == k and i != j:
             continue
         x, y, z = canonical[(i, j, k)].tolist()
-        
+
         if index_averaging:
             if i == j and j == k:
                 x = y = z = np.sqrt(3) / 3
             elif i == j:
-                x = y = (x+y) / 2 if k > 0 else np.sqrt(2) / 2
+                x = y = (x + y) / 2 if k > 0 else np.sqrt(2) / 2
             elif j == k:
-                y = z = (y+z) / 2 if i > 0 else np.sqrt(2) / 2
+                y = z = (y + z) / 2 if i > 0 else np.sqrt(2) / 2
             elif i == k:
-                x = z = (x+z) / 2 if j > 0 else np.sqrt(2) / 2
+                x = z = (x + z) / 2 if j > 0 else np.sqrt(2) / 2
 
         points.append({"i": int(i), "j": int(j), "xyz": [float(x), float(y), float(z)]})
 
@@ -94,14 +108,17 @@ def load_division_result(path):
         key_c, xyz_c = _canonicalize_triplet(i, j, k, xyz)
         canonical[key_c] = xyz_c
 
-    positions = {}
+    positions = np.full((n + 1, n + 1, 3), np.nan, dtype=float)
     perms = list(itertools.permutations([0, 1, 2]))
     for (i, j, k), xyz in canonical.items():
         idx = np.array([i, j, k], dtype=int)
         for p in perms:
-            key_p = (int(idx[p[0]]), int(idx[p[1]]), int(idx[p[2]]))
+            ip = np.array([idx[p[0]], idx[p[1]], idx[p[2]]], dtype=int)
             xyz_p = np.array([xyz[p[0]], xyz[p[1]], xyz[p[2]]], dtype=float)
-            positions[key_p] = xyz_p
+            pi = int(ip[0])
+            pj = int(ip[1])
+            if 0 <= pi <= n and 0 <= pj <= n and (pi + pj) <= n:
+                positions[pi, pj] = xyz_p
 
     return n, positions
 
@@ -123,11 +140,16 @@ def validate_division_result(path, tol=1e-12):
             index_errors.append({"i": i, "j": j})
 
     _, positions = load_division_result(path)
-    full_count = len(positions)
+    full_count = 0
+    for i, j in _iter_valid_ij(n):
+        if not np.isnan(positions[i, j]).any():
+            full_count += 1
 
     sphere_violations = []
     arc_violations = []
-    for (i, j, k), v in positions.items():
+    for i, j in _iter_valid_ij(n):
+        k = n - i - j
+        v = positions[i, j]
         x, y, z = np.asarray(v, dtype=float)
         norm = float(np.linalg.norm([x, y, z]))
         if abs(norm - 1.0) > tol:

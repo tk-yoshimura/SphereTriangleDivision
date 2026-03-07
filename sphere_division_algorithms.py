@@ -222,25 +222,107 @@ def project_center_for_vertex(center, key, n):
     return c
 
 
+def _project_vertices_batch(vertices, point_ij, n):
+    projected = np.asarray(vertices, dtype=float).copy()
+    projected = np.maximum(projected, 0.0)
+
+    pi = point_ij[:, 0]
+    pj = point_ij[:, 1]
+    pk = n - pi - pj
+
+    is_corner = ((pi == n) & (pj == 0)) | ((pi == 0) & (pj == n)) | ((pi == 0) & (pj == 0))
+    is_edge_i0 = (pi == 0) & (pj > 0) & (pk > 0)
+    is_edge_j0 = (pj == 0) & (pi > 0) & (pk > 0)
+    is_edge_k0 = (pk == 0) & (pi > 0) & (pj > 0)
+
+    projected[is_edge_i0, 0] = 0.0
+    projected[is_edge_j0, 1] = 0.0
+    projected[is_edge_k0, 2] = 0.0
+
+    zero_edge_i0 = is_edge_i0 & (projected[:, 1] == 0.0) & (projected[:, 2] == 0.0)
+    zero_edge_j0 = is_edge_j0 & (projected[:, 0] == 0.0) & (projected[:, 2] == 0.0)
+    zero_edge_k0 = is_edge_k0 & (projected[:, 0] == 0.0) & (projected[:, 1] == 0.0)
+
+    projected[zero_edge_i0, 1:] = 1.0 / np.sqrt(2.0)
+    projected[zero_edge_j0, 0] = 1.0 / np.sqrt(2.0)
+    projected[zero_edge_j0, 2] = 1.0 / np.sqrt(2.0)
+    projected[zero_edge_k0, 0:2] = 1.0 / np.sqrt(2.0)
+
+    norms = np.linalg.norm(projected, axis=1)
+    zero_norm = norms <= 0.0
+    if np.any(zero_norm):
+        for idx in np.flatnonzero(zero_norm):
+            i = int(pi[idx])
+            j = int(pj[idx])
+            projected[idx] = normalize(lattice_to_octant_point(i, j, k_from_ij(n, i, j), n))
+            if is_edge_i0[idx]:
+                projected[idx, 0] = 0.0
+                projected[idx] = normalize(np.maximum(projected[idx], 0.0))
+            elif is_edge_j0[idx]:
+                projected[idx, 1] = 0.0
+                projected[idx] = normalize(np.maximum(projected[idx], 0.0))
+            elif is_edge_k0[idx]:
+                projected[idx, 2] = 0.0
+                projected[idx] = normalize(np.maximum(projected[idx], 0.0))
+        norms = np.linalg.norm(projected, axis=1)
+
+    non_corner = ~is_corner
+    projected[non_corner] /= norms[non_corner, None]
+
+    projected[is_corner & (pi == n)] = np.array([1.0, 0.0, 0.0])
+    projected[is_corner & (pj == n)] = np.array([0.0, 1.0, 0.0])
+    projected[is_corner & (pk == n)] = np.array([0.0, 0.0, 1.0])
+
+    return projected
+
+
+def _project_centers_for_vertices_batch(centers, point_ij, n):
+    projected = normalize(centers)
+
+    pi = point_ij[:, 0]
+    pj = point_ij[:, 1]
+    pk = n - pi - pj
+
+    is_corner = ((pi == n) & (pj == 0)) | ((pi == 0) & (pj == n)) | ((pi == 0) & (pj == 0))
+    is_edge_i0 = (pi == 0) & (pj > 0) & (pk > 0)
+    is_edge_j0 = (pj == 0) & (pi > 0) & (pk > 0)
+    is_edge_k0 = (pk == 0) & (pi > 0) & (pj > 0)
+
+    edge_mask = is_edge_i0 | is_edge_j0 | is_edge_k0
+    projected[edge_mask] = np.maximum(projected[edge_mask], 0.0)
+    projected[is_edge_i0, 0] = 0.0
+    projected[is_edge_j0, 1] = 0.0
+    projected[is_edge_k0, 2] = 0.0
+    if np.any(edge_mask):
+        projected[edge_mask] = normalize(projected[edge_mask])
+
+    projected[is_corner & (pi == n)] = np.array([1.0, 0.0, 0.0])
+    projected[is_corner & (pj == n)] = np.array([0.0, 1.0, 0.0])
+    projected[is_corner & (pk == n)] = np.array([0.0, 0.0, 1.0])
+
+    return projected
+
+
 def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_every=25):
     points0, triangle_keys, _ = build_octant_mesh(n)
     point_keys = list(iter_valid_ij(n))
+    point_ij = np.asarray(point_keys, dtype=int)
+    tri_ij = np.asarray(triangle_keys, dtype=int)
 
     positions = np.full_like(points0, np.nan)
-    for i, j in point_keys:
-        positions[i, j] = project_vertex(normalize(points0[i, j]), (i, j), n)
+    positions[point_ij[:, 0], point_ij[:, 1]] = _project_vertices_batch(
+        normalize(points0[point_ij[:, 0], point_ij[:, 1]]),
+        point_ij,
+        n,
+    )
     history = []
 
     std_area_prev, max_rel_prev = np.inf, np.inf
 
-    tri_va = np.empty((len(triangle_keys), 3), dtype=float)
-    tri_vb = np.empty((len(triangle_keys), 3), dtype=float)
-    tri_vc = np.empty((len(triangle_keys), 3), dtype=float)
-
     for it in range(1, iterations + 1):
-        for t_id, tri in enumerate(triangle_keys):
-            tri_va[t_id], tri_vb[t_id], tri_vc[t_id] = [positions[i, j] for i, j in tri]
-
+        tri_va = positions[tri_ij[:, 0, 0], tri_ij[:, 0, 1]]
+        tri_vb = positions[tri_ij[:, 1, 0], tri_ij[:, 1, 1]]
+        tri_vc = positions[tri_ij[:, 2, 0], tri_ij[:, 2, 1]]
         tri_areas = spherical_triangle_area(tri_va, tri_vb, tri_vc)
         tri_centers = normalize(tri_va + tri_vb + tri_vc)
 
@@ -263,25 +345,29 @@ def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_ever
 
         move_sum = np.zeros_like(positions)
         move_count = np.zeros((n + 1, n + 1), dtype=int)
-
-        for t_id, tri in enumerate(triangle_keys):
-            rel = (tri_areas[t_id] - mean_area) / max(mean_area, 1e-15)
-            center = tri_centers[t_id]
-            for vk in tri:
-                vi, vj = vk
-                v = positions[vi, vj]
-                c = project_center_for_vertex(center, vk, n)
-                delta = rel * (c - v)
-                move_sum[vi, vj] += delta
-                move_count[vi, vj] += 1
+        rel = (tri_areas - mean_area) / max(mean_area, 1e-15)
+        rel_vertices = np.repeat(rel, 3)
+        center_vertices = np.repeat(tri_centers, 3, axis=0)
+        vertex_ij = tri_ij.reshape(-1, 2)
+        vertex_positions = positions[vertex_ij[:, 0], vertex_ij[:, 1]]
+        projected_centers = _project_centers_for_vertices_batch(center_vertices, vertex_ij, n)
+        deltas = rel_vertices[:, None] * (projected_centers - vertex_positions)
+        np.add.at(move_sum, (vertex_ij[:, 0], vertex_ij[:, 1], slice(None)), deltas)
+        np.add.at(move_count, (vertex_ij[:, 0], vertex_ij[:, 1]), 1)
 
         new_positions = np.full_like(positions, np.nan)
-        for i, j in point_keys:
-            if move_count[i, j] > 0:
-                move = move_sum[i, j] / float(move_count[i, j])
-            else:
-                move = np.zeros(3, dtype=float)
-            new_positions[i, j] = project_vertex(positions[i, j] + lr * move, (i, j), n)
+        moves = np.zeros((len(point_keys), 3), dtype=float)
+        valid_move = move_count[point_ij[:, 0], point_ij[:, 1]] > 0
+        if np.any(valid_move):
+            moves[valid_move] = (
+                move_sum[point_ij[valid_move, 0], point_ij[valid_move, 1]]
+                / move_count[point_ij[valid_move, 0], point_ij[valid_move, 1], None]
+            )
+        new_positions[point_ij[:, 0], point_ij[:, 1]] = _project_vertices_batch(
+            positions[point_ij[:, 0], point_ij[:, 1]] + lr * moves,
+            point_ij,
+            n,
+        )
         positions = new_positions
 
     return positions, triangle_keys, np.array(history, dtype=float)

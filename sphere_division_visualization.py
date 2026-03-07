@@ -10,6 +10,11 @@ from sphere_division_algorithms import build_octant_mesh, spherical_triangle_are
 from sphere_geometry_util import geodesic_arc
 
 
+def _tris_from_positions(triangle_keys, positions):
+    tri_ij = np.asarray(triangle_keys, dtype=int)
+    return positions[tri_ij[:, :, 0], tri_ij[:, :, 1]]
+
+
 def _add_octant_surface(ax, alpha=0.18, resolution=60):
     th = np.linspace(0.0, np.pi / 2.0, resolution)
     ph = np.linspace(0.0, np.pi / 2.0, resolution)
@@ -130,8 +135,8 @@ def plot_before_after_mesh_comparison(
     save_path=None,
     figsize=(14, 6),
 ):
-    tris_before = [np.array([positions_before[i, j] for i, j in tri]) for tri in triangle_keys]
-    tris_after = [np.array([positions_after[i, j] for i, j in tri]) for tri in triangle_keys]
+    tris_before = _tris_from_positions(triangle_keys, positions_before)
+    tris_after = _tris_from_positions(triangle_keys, positions_after)
 
     fig = plt.figure(figsize=figsize)
     ax_l = fig.add_subplot(121, projection="3d")
@@ -165,7 +170,7 @@ def plot_octant_mesh_from_positions(
     figsize=(8, 8),
     save_path=None,
 ):
-    tris = [np.array([positions[i, j] for i, j in tri]) for tri in triangle_keys]
+    tris = _tris_from_positions(triangle_keys, positions)
 
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111, projection="3d")
@@ -196,8 +201,8 @@ def plot_octant_mesh_from_positions_with_area_color(
     figsize=(9, 8),
     save_path=None,
 ):
-    tris = [np.array([positions[i, j] for i, j in tri]) for tri in triangle_keys]
-    areas = np.array([spherical_triangle_area(tri[0], tri[1], tri[2]) for tri in tris], dtype=float)
+    tris = _tris_from_positions(triangle_keys, positions)
+    areas = spherical_triangle_area(tris[:, 0], tris[:, 1], tris[:, 2])
 
     vmin = float(np.min(areas))
     vmax = float(np.max(areas))

@@ -53,7 +53,8 @@ def build_octant_triangle_keys(n):
 def build_octant_mesh(n):
     points = build_octant_points(n)
     triangle_keys = build_octant_triangle_keys(n)
-    tri_xyz = [np.array([points[i, j] for i, j in tri]) for tri in triangle_keys]
+    tri_ij = np.asarray(triangle_keys, dtype=int)
+    tri_xyz = points[tri_ij[:, :, 0], tri_ij[:, :, 1]]
     return points, triangle_keys, tri_xyz
 
 
@@ -73,21 +74,19 @@ def triangle_side_lengths(tri):
 
 
 def planar_triangle_areas(points, triangle_keys):
-    areas = []
-    for tri in triangle_keys:
-        a, b, c = [points[i, j] for i, j in tri]
-        areas.append(0.5 * np.linalg.norm(np.cross(b - a, c - a)))
-    return np.array(areas, dtype=float)
+    tri_ij = np.asarray(triangle_keys, dtype=int)
+    tri_xyz = points[tri_ij[:, :, 0], tri_ij[:, :, 1]]
+    ab = tri_xyz[:, 1] - tri_xyz[:, 0]
+    ac = tri_xyz[:, 2] - tri_xyz[:, 0]
+    return 0.5 * np.linalg.norm(np.cross(ab, ac), axis=1)
 
 
 def outward_normals_check(points, triangle_keys):
-    inward_ids = []
-    for t_id, tri in enumerate(triangle_keys):
-        i, j, k = [points[x, y] for x, y in tri]
-        normal = np.cross(j - i, k - i)
-        centroid = (i + j + k) / 3.0
-        if np.dot(normal, centroid) <= 0.0:
-            inward_ids.append(t_id)
+    tri_ij = np.asarray(triangle_keys, dtype=int)
+    tri_xyz = points[tri_ij[:, :, 0], tri_ij[:, :, 1]]
+    normals = np.cross(tri_xyz[:, 1] - tri_xyz[:, 0], tri_xyz[:, 2] - tri_xyz[:, 0])
+    centroids = np.mean(tri_xyz, axis=1)
+    inward_ids = np.flatnonzero(np.sum(normals * centroids, axis=1) <= 0.0).tolist()
     return len(inward_ids) == 0, inward_ids
 
 
@@ -152,11 +151,9 @@ def spherical_triangle_area(a, b, c):
 
 
 def spherical_triangle_areas(positions, triangle_keys):
-    areas = []
-    for tri in triangle_keys:
-        a, b, c = [positions[i, j] for i, j in tri]
-        areas.append(spherical_triangle_area(a, b, c))
-    return np.array(areas, dtype=float)
+    tri_ij = np.asarray(triangle_keys, dtype=int)
+    tri_xyz = positions[tri_ij[:, :, 0], tri_ij[:, :, 1]]
+    return spherical_triangle_area(tri_xyz[:, 0], tri_xyz[:, 1], tri_xyz[:, 2])
 
 
 def classify_vertex_constraint(key, n):

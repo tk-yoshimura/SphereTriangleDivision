@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
+from sphere_index_util import iter_valid_ij
 from coordinate_fileio import load_division_result, save_division_result, validate_division_result
 from sphere_division_algorithms import build_octant_mesh, project_vertex
 
@@ -83,9 +84,8 @@ class CoordinateFileIoTest(unittest.TestCase):
         n = 4
         points, _, _ = build_octant_mesh(n)
         positions = np.full_like(points, np.nan)
-        for i in range(n + 1):
-            for j in range(n + 1 - i):
-                positions[i, j] = project_vertex(points[i, j], (i, j), n)
+        for i, j in iter_valid_ij(n):
+            positions[i, j] = project_vertex(points[i, j], (i, j), n)
 
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "division_result_4.json"
@@ -101,9 +101,8 @@ class CoordinateFileIoTest(unittest.TestCase):
         n = 6
         points, _, _ = build_octant_mesh(n)
         positions = np.full_like(points, np.nan)
-        for i in range(n + 1):
-            for j in range(n + 1 - i):
-                positions[i, j] = project_vertex(points[i, j], (i, j), n)
+        for i, j in iter_valid_ij(n):
+            positions[i, j] = project_vertex(points[i, j], (i, j), n)
 
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "division_result_6.json"

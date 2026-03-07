@@ -37,16 +37,16 @@ def build_octant_points(n):
 def build_octant_triangle_keys(n):
     validate_n(n)
     triangles = []
-    for i in range(n):
-        for j in range(n - i):
-            k = k_from_ij(n, i, j)
-            a = (i, j)
-            b = (i + 1, j)
-            c = (i, j + 1)
-            triangles.append((a, b, c))
-            if k >= 2:
-                d = (i + 1, j + 1)
-                triangles.append((b, d, c))
+    for i, j in iter_valid_ij(n - 1):
+        k = k_from_ij(n, i, j)
+        a = (i, j)
+        b = (i + 1, j)
+        c = (i, j + 1)
+        triangles.append((a, b, c))
+        if k >= 2:
+            d = (i + 1, j + 1)
+            triangles.append((b, d, c))
+            
     return triangles
 
 

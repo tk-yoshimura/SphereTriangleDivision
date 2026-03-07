@@ -5,13 +5,21 @@ from pathlib import Path
 
 import numpy as np
 
-from sphere_index_util import iter_valid_ij
 from coordinate_fileio import load_division_result, save_division_result, validate_division_result
 from sphere_division_algorithms import build_octant_mesh, project_vertex
+from sphere_index_util import iter_valid_ij
 
 
 def _empty_positions(n):
     return np.full((n + 1, n + 1, 3), np.nan, dtype=float)
+
+
+def _projected_positions(n):
+    points, _, _ = build_octant_mesh(n)
+    positions = np.full_like(points, np.nan)
+    for i, j in iter_valid_ij(n):
+        positions[i, j] = project_vertex(points[i, j], (i, j), n)
+    return positions
 
 
 class CoordinateFileIoTest(unittest.TestCase):
@@ -82,10 +90,7 @@ class CoordinateFileIoTest(unittest.TestCase):
 
     def test_validate_division_result_success(self):
         n = 4
-        points, _, _ = build_octant_mesh(n)
-        positions = np.full_like(points, np.nan)
-        for i, j in iter_valid_ij(n):
-            positions[i, j] = project_vertex(points[i, j], (i, j), n)
+        positions = _projected_positions(n)
 
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "division_result_4.json"
@@ -99,10 +104,7 @@ class CoordinateFileIoTest(unittest.TestCase):
 
     def test_validate_division_result_success_n6(self):
         n = 6
-        points, _, _ = build_octant_mesh(n)
-        positions = np.full_like(points, np.nan)
-        for i, j in iter_valid_ij(n):
-            positions[i, j] = project_vertex(points[i, j], (i, j), n)
+        positions = _projected_positions(n)
 
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "division_result_6.json"

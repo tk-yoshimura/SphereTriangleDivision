@@ -2,7 +2,14 @@ import itertools
 import numpy as np
 
 from sphere_geometry_util import normalize
-from sphere_index_util import iter_valid_ij, iter_valid_ijk, k_from_ij, validate_n
+from sphere_index_util import (
+    iter_valid_ij,
+    iter_valid_ijk,
+    k_from_ij,
+    point_ij_array,
+    triangle_vertex_array,
+    validate_n,
+)
 
 
 def lattice_to_octant_point(i, j, k, n):
@@ -53,14 +60,14 @@ def build_octant_triangle_keys(n):
 def build_octant_mesh(n):
     points = build_octant_points(n)
     triangle_keys = build_octant_triangle_keys(n)
-    tri_ij = np.asarray(triangle_keys, dtype=int)
+    tri_ij = triangle_vertex_array(triangle_keys)
     tri_xyz = points[tri_ij[:, :, 0], tri_ij[:, :, 1]]
     return points, triangle_keys, tri_xyz
 
 
 def build_point_index(points):
     n = points.shape[0] - 1
-    point_keys = list(iter_valid_ij(n))
+    point_keys = [tuple(idx) for idx in point_ij_array(n).tolist()]
     point_index = {key: idx for idx, key in enumerate(point_keys)}
     return point_keys, point_index
 
@@ -74,16 +81,12 @@ def triangle_side_lengths(tri):
 
 
 def planar_triangle_areas(points, triangle_keys):
-    tri_ij = np.asarray(triangle_keys, dtype=int)
-    tri_xyz = points[tri_ij[:, :, 0], tri_ij[:, :, 1]]
-    ab = tri_xyz[:, 1] - tri_xyz[:, 0]
-    ac = tri_xyz[:, 2] - tri_xyz[:, 0]
-    return 0.5 * np.linalg.norm(np.cross(ab, ac), axis=1)
+    tri_xyz = _triangle_xyz_from_positions(points, triangle_keys)
+    return 0.5 * np.linalg.norm(np.cross(tri_xyz[:, 1] - tri_xyz[:, 0], tri_xyz[:, 2] - tri_xyz[:, 0]), axis=1)
 
 
 def outward_normals_check(points, triangle_keys):
-    tri_ij = np.asarray(triangle_keys, dtype=int)
-    tri_xyz = points[tri_ij[:, :, 0], tri_ij[:, :, 1]]
+    tri_xyz = _triangle_xyz_from_positions(points, triangle_keys)
     normals = np.cross(tri_xyz[:, 1] - tri_xyz[:, 0], tri_xyz[:, 2] - tri_xyz[:, 0])
     centroids = np.mean(tri_xyz, axis=1)
     inward_ids = np.flatnonzero(np.sum(normals * centroids, axis=1) <= 0.0).tolist()
@@ -151,8 +154,7 @@ def spherical_triangle_area(a, b, c):
 
 
 def spherical_triangle_areas(positions, triangle_keys):
-    tri_ij = np.asarray(triangle_keys, dtype=int)
-    tri_xyz = positions[tri_ij[:, :, 0], tri_ij[:, :, 1]]
+    tri_xyz = _triangle_xyz_from_positions(positions, triangle_keys)
     return spherical_triangle_area(tri_xyz[:, 0], tri_xyz[:, 1], tri_xyz[:, 2])
 
 
@@ -300,11 +302,16 @@ def _project_centers_for_vertices_batch(centers, point_ij, n):
     return projected
 
 
+def _triangle_xyz_from_positions(positions, triangle_keys):
+    tri_ij = triangle_vertex_array(triangle_keys)
+    return positions[tri_ij[:, :, 0], tri_ij[:, :, 1]]
+
+
 def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_every=25):
     points0, triangle_keys, _ = build_octant_mesh(n)
-    point_keys = list(iter_valid_ij(n))
-    point_ij = np.asarray(point_keys, dtype=int)
-    tri_ij = np.asarray(triangle_keys, dtype=int)
+    point_ij = point_ij_array(n)
+    point_keys = [tuple(idx) for idx in point_ij.tolist()]
+    tri_ij = triangle_vertex_array(triangle_keys)
 
     positions = np.full_like(points0, np.nan)
     positions[point_ij[:, 0], point_ij[:, 1]] = _project_vertices_batch(

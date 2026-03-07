@@ -30,6 +30,4 @@ def slerp(p0, p1, t):
 
 
 def geodesic_arc(p0, p1, samples=24):
-    ts = np.linspace(0.0, 1.0, samples)
-    pts = np.array([slerp(p0, p1, t) for t in ts])
-    return pts
+    return np.array([slerp(p0, p1, t) for t in np.linspace(0.0, 1.0, samples)])

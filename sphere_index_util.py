@@ -1,6 +1,9 @@
+import numpy as np
+
+
 def validate_n(n):
-    if n < 2:
-        raise ValueError("N must be >= 2.")
+    if n < 1:
+        raise ValueError("N must be >= 1.")
 
 
 def iter_valid_ij(n):
@@ -18,12 +21,18 @@ def iter_valid_ijk(n):
         yield i, j, k_from_ij(n, i, j)
 
 
+def point_ij_array(n):
+    return np.array(list(iter_valid_ij(n)), dtype=int)
+
+
+def triangle_vertex_array(triangle_keys):
+    return np.asarray(triangle_keys, dtype=int)
+
+
 def full_point_count(n):
     return (n + 1) * (n + 2) // 2
 
 
 def compact_point_count(n):
     # Number of integer triples (i, j, k) with i+j+k=n and i<=j<=k.
-    compact_count = (n * (n + 6) + 12) // 12
-
-    return compact_count
+    return (n * (n + 6) + 12) // 12

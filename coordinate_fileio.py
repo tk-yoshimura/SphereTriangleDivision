@@ -3,7 +3,7 @@ import itertools
 from pathlib import Path
 
 import numpy as np
-from sphere_index_util import compact_point_count, full_point_count, iter_valid_ij, iter_valid_ijk, k_from_ij
+from sphere_index_util import compact_point_count, full_point_count, iter_valid_ijk, k_from_ij
 
 
 def _canonicalize_triplet(i, j, k, xyz):
@@ -37,6 +37,10 @@ def _validate_positions_shape(n, positions):
     expected_shape = (n + 1, n + 1, 3)
     if positions.shape != expected_shape:
         raise ValueError(f"positions shape must be {expected_shape}, got {positions.shape}.")
+
+
+def _valid_position_mask(positions):
+    return ~np.isnan(positions[:, :, 0])
 
 
 def save_division_result(path, n, positions, index_averaging=True):
@@ -125,10 +129,7 @@ def validate_division_result(path, tol=1e-12):
             index_errors.append({"i": i, "j": j})
 
     _, positions = load_division_result(path)
-    full_count = 0
-    for i, j in iter_valid_ij(n):
-        if not np.isnan(positions[i, j]).any():
-            full_count += 1
+    full_count = int(np.count_nonzero(_valid_position_mask(positions)))
 
     sphere_violations = []
     arc_violations = []

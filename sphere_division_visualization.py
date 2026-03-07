@@ -8,10 +8,11 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from sphere_division_algorithms import build_octant_mesh, spherical_triangle_area
 from sphere_geometry_util import geodesic_arc
+from sphere_index_util import triangle_vertex_array
 
 
 def _tris_from_positions(triangle_keys, positions):
-    tri_ij = np.asarray(triangle_keys, dtype=int)
+    tri_ij = triangle_vertex_array(triangle_keys)
     return positions[tri_ij[:, :, 0], tri_ij[:, :, 1]]
 
 

@@ -1,6 +1,6 @@
 def validate_n(n):
-    if n < 1:
-        raise ValueError("N must be >= 1.")
+    if n < 2:
+        raise ValueError("N must be >= 2.")
 
 
 def iter_valid_ij(n):

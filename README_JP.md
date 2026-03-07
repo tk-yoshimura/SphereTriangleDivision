@@ -31,6 +31,7 @@
 - `sphere_index_util.py`: インデックス共通ユーティリティ（`iter_valid_ij`, `k_from_ij`, 検証/点数計算補助）
 - `sphere_division_algorithms.py`: 両ノートブックで利用するメッシュ・面積・制約・最適化アルゴリズム
 - `sphere_division_visualization.py`: 可視化ユーティリティ（八分体メッシュ、履歴/分布、最適化前後比較）
+- `results/division_result_*.json`: 面積最適化が十分に収束した点座標JSONファイル
 - `figures/octant_n_squared_division.svg`: ノートブックのサンプルセル（`N=16`）で生成される図
 - `figures/octant_n_squared_division_with_area_optimizer.svg`: 球面上の最適化前後メッシュ比較
 - `figures/octant_n_squared_division_with_area_optimizer_history.svg`: 収束履歴（`std`, `max_rel_dev`）と最適化後面積ヒストグラム

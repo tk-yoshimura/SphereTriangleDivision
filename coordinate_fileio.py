@@ -3,7 +3,7 @@ import itertools
 from pathlib import Path
 
 import numpy as np
-from sphere_index_util import full_point_count, compact_point_count, iter_valid_ij, k_from_ij
+from sphere_index_util import compact_point_count, full_point_count, iter_valid_ij, iter_valid_ijk, k_from_ij
 
 
 def _canonicalize_triplet(i, j, k, xyz):
@@ -46,10 +46,9 @@ def save_division_result(path, n, positions, index_averaging=True):
     path.parent.mkdir(parents=True, exist_ok=True)
 
     canonical = {}
-    for i, j in iter_valid_ij(n):
+    for i, j, k in iter_valid_ijk(n):
         if np.isnan(positions[i, j]).any():
             continue
-        k = k_from_ij(n, i, j)
         key_c, xyz_c = _canonicalize_triplet(i, j, k, positions[i, j])
         if key_c not in canonical:
             canonical[key_c] = xyz_c
@@ -133,8 +132,7 @@ def validate_division_result(path, tol=1e-12):
 
     sphere_violations = []
     arc_violations = []
-    for i, j in iter_valid_ij(n):
-        k = k_from_ij(n, i, j)
+    for i, j, k in iter_valid_ijk(n):
         v = positions[i, j]
         x, y, z = np.asarray(v, dtype=float)
         norm = float(np.linalg.norm([x, y, z]))

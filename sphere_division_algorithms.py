@@ -2,7 +2,7 @@ import itertools
 import numpy as np
 
 from sphere_geometry_util import normalize
-from sphere_index_util import iter_valid_ij, k_from_ij, validate_n
+from sphere_index_util import iter_valid_ij, iter_valid_ijk, k_from_ij, validate_n
 
 
 def lattice_to_octant_point(i, j, k, n):
@@ -29,8 +29,8 @@ def lattice_to_octant_point(i, j, k, n):
 def build_octant_points(n):
     validate_n(n)
     points = np.full((n + 1, n + 1, 3), np.nan, dtype=float)
-    for i, j in iter_valid_ij(n):
-        points[i, j] = lattice_to_octant_point(i, j, k_from_ij(n, i, j), n)
+    for i, j, k in iter_valid_ijk(n):
+        points[i, j] = lattice_to_octant_point(i, j, k, n)
     return points
 
 
@@ -96,8 +96,7 @@ def lattice_permutation_error(n):
     max_perm_err = 0.0
     worst_case = None
 
-    for i, j in iter_valid_ij(n):
-        k = k_from_ij(n, i, j)
+    for i, j, k in iter_valid_ijk(n):
         v_base = lattice_to_octant_point(i, j, k, n)
         base_idx = np.array([i, j, k], dtype=int)
 
@@ -119,8 +118,7 @@ def positions_permutation_error(positions):
     max_perm_err = 0.0
     worst_case = None
 
-    for i, j in iter_valid_ij(n):
-        k = k_from_ij(n, i, j)
+    for i, j, k in iter_valid_ijk(n):
         base = positions[i, j]
         idx = np.array([i, j, k], dtype=int)
         for p in perms:

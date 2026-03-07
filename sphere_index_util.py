@@ -13,6 +13,11 @@ def k_from_ij(n, i, j):
     return n - i - j
 
 
+def iter_valid_ijk(n):
+    for i, j in iter_valid_ij(n):
+        yield i, j, k_from_ij(n, i, j)
+
+
 def full_point_count(n):
     return (n + 1) * (n + 2) // 2
 

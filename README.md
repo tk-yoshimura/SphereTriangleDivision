@@ -28,6 +28,7 @@ After optimization:
 - `sphere_octant_division_with_area_optimizer.ipynb`: deterministic iterative optimizer to reduce spherical area variance.
 - `division_result_viewer.ipynb`: loads saved division JSON and visualizes spherical triangles with area-based coloring (`bwr`), including before/after optimization views.
 - `sphere_geometry_util.py`: utility for geodesic arc sampling on the unit sphere.
+- `sphere_index_util.py`: shared index utilities (`iter_valid_ij`, `k_from_ij`, validation/count helpers).
 - `sphere_division_algorithms.py`: shared mesh/area/constraint/optimizer algorithms used by both notebooks.
 - `sphere_division_visualization.py`: shared plotting utilities (octant mesh, history/distribution, before/after comparison).
 - `figures/octant_n_squared_division.svg`: generated figure from the notebook example cell (`N=16`).

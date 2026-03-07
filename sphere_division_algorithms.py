@@ -2,21 +2,7 @@ import itertools
 import numpy as np
 
 from sphere_geometry_util import normalize
-
-
-def _validate_n(n):
-    if n < 1:
-        raise ValueError("N must be >= 1.")
-
-
-def _iter_valid_ij(n):
-    for i in range(n + 1):
-        for j in range(n + 1 - i):
-            yield i, j
-
-
-def _k_from_ij(n, i, j):
-    return n - i - j
+from sphere_index_util import iter_valid_ij, k_from_ij, validate_n
 
 
 def lattice_to_octant_point(i, j, k, n):
@@ -41,19 +27,19 @@ def lattice_to_octant_point(i, j, k, n):
 
 
 def build_octant_points(n):
-    _validate_n(n)
+    validate_n(n)
     points = np.full((n + 1, n + 1, 3), np.nan, dtype=float)
-    for i, j in _iter_valid_ij(n):
-        points[i, j] = lattice_to_octant_point(i, j, _k_from_ij(n, i, j), n)
+    for i, j in iter_valid_ij(n):
+        points[i, j] = lattice_to_octant_point(i, j, k_from_ij(n, i, j), n)
     return points
 
 
 def build_octant_triangle_keys(n):
-    _validate_n(n)
+    validate_n(n)
     triangles = []
     for i in range(n):
         for j in range(n - i):
-            k = _k_from_ij(n, i, j)
+            k = k_from_ij(n, i, j)
             a = (i, j)
             b = (i + 1, j)
             c = (i, j + 1)
@@ -73,7 +59,7 @@ def build_octant_mesh(n):
 
 def build_point_index(points):
     n = points.shape[0] - 1
-    point_keys = list(_iter_valid_ij(n))
+    point_keys = list(iter_valid_ij(n))
     point_index = {key: idx for idx, key in enumerate(point_keys)}
     return point_keys, point_index
 
@@ -110,8 +96,8 @@ def lattice_permutation_error(n):
     max_perm_err = 0.0
     worst_case = None
 
-    for i, j in _iter_valid_ij(n):
-        k = _k_from_ij(n, i, j)
+    for i, j in iter_valid_ij(n):
+        k = k_from_ij(n, i, j)
         v_base = lattice_to_octant_point(i, j, k, n)
         base_idx = np.array([i, j, k], dtype=int)
 
@@ -133,8 +119,8 @@ def positions_permutation_error(positions):
     max_perm_err = 0.0
     worst_case = None
 
-    for i, j in _iter_valid_ij(n):
-        k = _k_from_ij(n, i, j)
+    for i, j in iter_valid_ij(n):
+        k = k_from_ij(n, i, j)
         base = positions[i, j]
         idx = np.array([i, j, k], dtype=int)
         for p in perms:
@@ -167,7 +153,7 @@ def spherical_triangle_areas(positions, triangle_keys):
 
 def classify_vertex_constraint(key, n):
     i, j = key
-    k = _k_from_ij(n, i, j)
+    k = k_from_ij(n, i, j)
     zeros = [i == 0, j == 0, k == 0]
     zc = sum(zeros)
 
@@ -206,7 +192,7 @@ def project_vertex(v, key, n):
     norm = np.linalg.norm(v)
     if norm <= 0.0:
         i, j = key
-        v = normalize(lattice_to_octant_point(i, j, _k_from_ij(n, i, j), n))
+        v = normalize(lattice_to_octant_point(i, j, k_from_ij(n, i, j), n))
         mode2, axis2 = classify_vertex_constraint(key, n)
         if mode2 == "edge":
             v[axis2] = 0.0
@@ -230,7 +216,7 @@ def project_center_for_vertex(center, key, n):
 
 def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_every=25):
     points0, triangle_keys, _ = build_octant_mesh(n)
-    point_keys = list(_iter_valid_ij(n))
+    point_keys = list(iter_valid_ij(n))
 
     positions = np.full_like(points0, np.nan)
     for i, j in point_keys:

@@ -28,6 +28,7 @@
 - `sphere_octant_division_with_area_optimizer.ipynb`: 球面三角形面積の分散を下げる決定論的反復最適化ノートブック
 - `division_result_viewer.ipynb`: 保存済み分割 JSON を読み込み、面積ベース色付け（`bwr`）で球面三角形を可視化（最適化前後の表示を含む）
 - `sphere_geometry_util.py`: 単位球面上の測地線弧サンプリング用ユーティリティ
+- `sphere_index_util.py`: インデックス共通ユーティリティ（`iter_valid_ij`, `k_from_ij`, 検証/点数計算補助）
 - `sphere_division_algorithms.py`: 両ノートブックで利用するメッシュ・面積・制約・最適化アルゴリズム
 - `sphere_division_visualization.py`: 可視化ユーティリティ（八分体メッシュ、履歴/分布、最適化前後比較）
 - `figures/octant_n_squared_division.svg`: ノートブックのサンプルセル（`N=16`）で生成される図

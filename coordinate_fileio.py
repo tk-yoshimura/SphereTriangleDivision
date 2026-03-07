@@ -3,19 +3,7 @@ import itertools
 from pathlib import Path
 
 import numpy as np
-
-
-def _iter_valid_ij(n):
-    for i in range(n + 1):
-        for j in range(n + 1 - i):
-            yield i, j
-
-
-def _expected_point_counts(n):
-    full_count = (n + 1) * (n + 2) // 2
-    # Number of integer triples (i, j, k) with i+j+k=n and i<=j<=k.
-    compact_count = (n * (n + 6) + 12) // 12
-    return compact_count, full_count
+from sphere_index_util import full_point_count, compact_point_count, iter_valid_ij, k_from_ij
 
 
 def _canonicalize_triplet(i, j, k, xyz):
@@ -58,10 +46,10 @@ def save_division_result(path, n, positions, index_averaging=True):
     path.parent.mkdir(parents=True, exist_ok=True)
 
     canonical = {}
-    for i, j in _iter_valid_ij(n):
+    for i, j in iter_valid_ij(n):
         if np.isnan(positions[i, j]).any():
             continue
-        k = n - i - j
+        k = k_from_ij(n, i, j)
         key_c, xyz_c = _canonicalize_triplet(i, j, k, positions[i, j])
         if key_c not in canonical:
             canonical[key_c] = xyz_c
@@ -100,7 +88,7 @@ def load_division_result(path):
     for rec in payload["points"]:
         i = int(rec["i"])
         j = int(rec["j"])
-        k = n - i - j
+        k = k_from_ij(n, i, j)
         xyz = np.asarray(rec["xyz"], dtype=float)
         key_c, xyz_c = _canonicalize_triplet(i, j, k, xyz)
         canonical[key_c] = xyz_c
@@ -127,7 +115,8 @@ def validate_division_result(path, tol=1e-12):
     n = int(payload["N"])
     point_records = payload.get("points", [])
     stored_count = len(point_records)
-    expected_compact, expected_full = _expected_point_counts(n)
+    expected_compact = compact_point_count(n)
+    expected_full = full_point_count(n)
 
     index_errors = []
     for rec in point_records:
@@ -138,14 +127,14 @@ def validate_division_result(path, tol=1e-12):
 
     _, positions = load_division_result(path)
     full_count = 0
-    for i, j in _iter_valid_ij(n):
+    for i, j in iter_valid_ij(n):
         if not np.isnan(positions[i, j]).any():
             full_count += 1
 
     sphere_violations = []
     arc_violations = []
-    for i, j in _iter_valid_ij(n):
-        k = n - i - j
+    for i, j in iter_valid_ij(n):
+        k = k_from_ij(n, i, j)
         v = positions[i, j]
         x, y, z = np.asarray(v, dtype=float)
         norm = float(np.linalg.norm([x, y, z]))

@@ -13,11 +13,8 @@ def _iter_valid_ij(n):
 
 def _expected_point_counts(n):
     full_count = (n + 1) * (n + 2) // 2
-    compact_count = 0
-    for i, j in _iter_valid_ij(n):
-        k = n - i - j
-        if i <= j <= k:
-            compact_count += 1
+    # Number of integer triples (i, j, k) with i+j+k=n and i<=j<=k.
+    compact_count = (n * (n + 6) + 12) // 12
     return compact_count, full_count
 
 

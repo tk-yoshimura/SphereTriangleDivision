@@ -65,13 +65,13 @@ def save_division_result(path, n, positions, index_averaging=True):
         
         if index_averaging:
             if i == j and j == k:
-                x = y = z = (x+y+z) / 3
+                x = y = z = np.sqrt(3) / 3
             elif i == j:
-                x = y = (x+y) / 2
+                x = y = (x+y) / 2 if k > 0 else np.sqrt(2) / 2
             elif j == k:
-                y = z = (y+z) / 2
+                y = z = (y+z) / 2 if i > 0 else np.sqrt(2) / 2
             elif i == k:
-                x = z = (x+z) / 2
+                x = z = (x+z) / 2 if j > 0 else np.sqrt(2) / 2
 
         points.append({"i": int(i), "j": int(j), "xyz": [float(x), float(y), float(z)]})
 

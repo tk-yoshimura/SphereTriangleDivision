@@ -221,6 +221,18 @@ def project_center_for_vertex(center, key, n):
     return c
 
 
+def build_projected_positions(n):
+    points, _, _ = build_octant_mesh(n)
+    point_ij = point_ij_array(n)
+    positions = np.full_like(points, np.nan)
+    positions[point_ij[:, 0], point_ij[:, 1]] = _project_vertices_batch(
+        normalize(points[point_ij[:, 0], point_ij[:, 1]]),
+        point_ij,
+        n,
+    )
+    return positions
+
+
 def _project_vertices_batch(vertices, point_ij, n):
     projected = np.asarray(vertices, dtype=float).copy()
     projected = np.maximum(projected, 0.0)
@@ -308,17 +320,12 @@ def _triangle_xyz_from_positions(positions, triangle_keys):
 
 
 def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_every=25):
-    points0, triangle_keys, _ = build_octant_mesh(n)
+    _, triangle_keys, _ = build_octant_mesh(n)
     point_ij = point_ij_array(n)
     point_keys = [tuple(idx) for idx in point_ij.tolist()]
     tri_ij = triangle_vertex_array(triangle_keys)
 
-    positions = np.full_like(points0, np.nan)
-    positions[point_ij[:, 0], point_ij[:, 1]] = _project_vertices_batch(
-        normalize(points0[point_ij[:, 0], point_ij[:, 1]]),
-        point_ij,
-        n,
-    )
+    positions = build_projected_positions(n)
     history = []
 
     std_area_prev, max_rel_prev = np.inf, np.inf

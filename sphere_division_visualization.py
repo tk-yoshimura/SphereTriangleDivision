@@ -12,11 +12,13 @@ from sphere_index_util import triangle_vertex_array
 
 
 def _tris_from_positions(triangle_keys, positions):
+    """Gather triangle coordinates from point positions for plotting."""
     tri_ij = triangle_vertex_array(triangle_keys)
     return positions[tri_ij[:, :, 0], tri_ij[:, :, 1]]
 
 
 def _add_octant_surface(ax, alpha=0.18, resolution=60):
+    """Draw a translucent sphere-octant surface as context."""
     th = np.linspace(0.0, np.pi / 2.0, resolution)
     ph = np.linspace(0.0, np.pi / 2.0, resolution)
     th_grid, ph_grid = np.meshgrid(th, ph)
@@ -27,6 +29,7 @@ def _add_octant_surface(ax, alpha=0.18, resolution=60):
 
 
 def _style_octant_axes(ax, title, add_axes=True):
+    """Apply consistent axis styling for octant plots."""
     if add_axes:
         ax.plot([0, 1.1], [0, 0], [0, 0], color="r", linewidth=1.2)
         ax.plot([0, 0], [0, 1.1], [0, 0], color="g", linewidth=1.2)
@@ -44,6 +47,7 @@ def _style_octant_axes(ax, title, add_axes=True):
 
 
 def save_figure(fig, save_path):
+    """Save a matplotlib figure if an output path is provided."""
     if not save_path:
         return
     output = Path(save_path)
@@ -53,6 +57,7 @@ def save_figure(fig, save_path):
 
 
 def plot_octant_division(n=6, sphere_alpha=0.18, edge_lw=0.8, figsize=(8, 8), save_path=None):
+    """Plot the raw octant mesh on the sphere."""
     _, _, tris = build_octant_mesh(n)
 
     fig = plt.figure(figsize=figsize)
@@ -75,6 +80,7 @@ def plot_octant_division(n=6, sphere_alpha=0.18, edge_lw=0.8, figsize=(8, 8), sa
 
 
 def plot_planar_area_distribution(areas, n, figsize=(7, 4)):
+    """Plot a histogram of planar triangle areas."""
     bins = min(20, max(5, int(np.sqrt(areas.size))))
     fig, ax = plt.subplots(figsize=figsize)
     ax.hist(areas, bins=bins, color="steelblue", edgecolor="black", alpha=0.85)
@@ -97,6 +103,7 @@ def plot_planar_area_distribution(areas, n, figsize=(7, 4)):
 
 
 def plot_optimizer_history_and_distribution(hist, areas_eq, n, save_path=None, figsize=(12, 4)):
+    """Plot optimizer convergence and final spherical area distribution."""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
     line_std = ax1.plot(hist[:, 0], hist[:, 2], color="tab:blue", lw=1.8, label="std")[0]
     ax1.set_title("Convergence history")
@@ -136,6 +143,7 @@ def plot_before_after_mesh_comparison(
     save_path=None,
     figsize=(14, 6),
 ):
+    """Plot the mesh before and after optimization side by side."""
     tris_before = _tris_from_positions(triangle_keys, positions_before)
     tris_after = _tris_from_positions(triangle_keys, positions_after)
 
@@ -171,6 +179,7 @@ def plot_octant_mesh_from_positions(
     figsize=(8, 8),
     save_path=None,
 ):
+    """Plot a mesh from a provided position array."""
     tris = _tris_from_positions(triangle_keys, positions)
 
     fig = plt.figure(figsize=figsize)
@@ -202,6 +211,7 @@ def plot_octant_mesh_from_positions_with_area_color(
     figsize=(9, 8),
     save_path=None,
 ):
+    """Plot a mesh colored by spherical triangle area."""
     tris = _tris_from_positions(triangle_keys, positions)
     areas = spherical_triangle_area(tris[:, 0], tris[:, 1], tris[:, 2])
 

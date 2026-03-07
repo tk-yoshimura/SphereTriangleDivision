@@ -13,6 +13,7 @@ from sphere_index_util import (
 
 
 def lattice_to_octant_point(i, j, k, n):
+    """Map a simplex lattice index to an unnormalized octant point."""
     ring_ij, ring_jk, ring_ki = i + j, j + k, k + i
 
     theta_ij = (np.pi * ring_ij) / (2.0 * n)
@@ -34,6 +35,7 @@ def lattice_to_octant_point(i, j, k, n):
 
 
 def build_octant_points(n):
+    """Build the point array for one octant simplex face."""
     validate_n(n)
     points = np.full((n + 1, n + 1, 3), np.nan, dtype=float)
     for i, j, k in iter_valid_ijk(n):
@@ -42,6 +44,7 @@ def build_octant_points(n):
 
 
 def build_octant_triangle_keys(n):
+    """Build lattice triangle connectivity for one octant face."""
     validate_n(n)
     triangles = []
     for i, j in iter_valid_ij(n - 1):
@@ -53,11 +56,11 @@ def build_octant_triangle_keys(n):
         if k >= 2:
             d = (i + 1, j + 1)
             triangles.append((b, d, c))
-            
     return triangles
 
 
 def build_octant_mesh(n):
+    """Build points, triangle keys, and triangle coordinates for one octant."""
     points = build_octant_points(n)
     triangle_keys = build_octant_triangle_keys(n)
     tri_ij = triangle_vertex_array(triangle_keys)
@@ -66,6 +69,7 @@ def build_octant_mesh(n):
 
 
 def build_point_index(points):
+    """Create stable integer ids for valid point indices."""
     n = points.shape[0] - 1
     point_keys = [tuple(idx) for idx in point_ij_array(n).tolist()]
     point_index = {key: idx for idx, key in enumerate(point_keys)}
@@ -73,6 +77,7 @@ def build_point_index(points):
 
 
 def triangle_side_lengths(tri):
+    """Return spherical side lengths for one triangle."""
     def ang(u, v):
         return np.arccos(np.clip(np.dot(u, v), -1.0, 1.0))
 
@@ -81,11 +86,13 @@ def triangle_side_lengths(tri):
 
 
 def planar_triangle_areas(points, triangle_keys):
+    """Return planar triangle areas for all triangles in the mesh."""
     tri_xyz = _triangle_xyz_from_positions(points, triangle_keys)
     return 0.5 * np.linalg.norm(np.cross(tri_xyz[:, 1] - tri_xyz[:, 0], tri_xyz[:, 2] - tri_xyz[:, 0]), axis=1)
 
 
 def outward_normals_check(points, triangle_keys):
+    """Check whether all planar triangle normals point outward."""
     tri_xyz = _triangle_xyz_from_positions(points, triangle_keys)
     normals = np.cross(tri_xyz[:, 1] - tri_xyz[:, 0], tri_xyz[:, 2] - tri_xyz[:, 0])
     centroids = np.mean(tri_xyz, axis=1)
@@ -94,6 +101,7 @@ def outward_normals_check(points, triangle_keys):
 
 
 def lattice_permutation_error(n):
+    """Measure equivariance error of the lattice mapping under axis permutation."""
     perms = list(itertools.permutations([0, 1, 2]))
     max_perm_err = 0.0
     worst_case = None
@@ -114,9 +122,9 @@ def lattice_permutation_error(n):
 
 
 def positions_permutation_error(positions):
+    """Measure equivariance error of optimized positions under axis permutation."""
     n = positions.shape[0] - 1
     perms = list(itertools.permutations([0, 1, 2]))
-    
     max_perm_err = 0.0
     worst_case = None
 
@@ -135,6 +143,7 @@ def positions_permutation_error(positions):
 
 
 def spherical_triangle_area(a, b, c):
+    """Compute spherical triangle area for one triangle or a batch of triangles."""
     a = normalize(a)
     b = normalize(b)
     c = normalize(c)
@@ -154,11 +163,13 @@ def spherical_triangle_area(a, b, c):
 
 
 def spherical_triangle_areas(positions, triangle_keys):
+    """Compute spherical triangle areas for all mesh triangles."""
     tri_xyz = _triangle_xyz_from_positions(positions, triangle_keys)
     return spherical_triangle_area(tri_xyz[:, 0], tri_xyz[:, 1], tri_xyz[:, 2])
 
 
 def classify_vertex_constraint(key, n):
+    """Classify a lattice point as corner, edge, or interior."""
     i, j = key
     k = k_from_ij(n, i, j)
     zeros = [i == 0, j == 0, k == 0]
@@ -176,6 +187,7 @@ def classify_vertex_constraint(key, n):
 
 
 def project_vertex(v, key, n):
+    """Project one vertex onto the valid octant constraint manifold."""
     mode, axis = classify_vertex_constraint(key, n)
 
     if mode == "corner":
@@ -210,6 +222,7 @@ def project_vertex(v, key, n):
 
 
 def project_center_for_vertex(center, key, n):
+    """Project a triangle center into the feasible region of a given vertex."""
     mode, axis = classify_vertex_constraint(key, n)
     c = normalize(center)
     if mode == "corner":
@@ -222,6 +235,7 @@ def project_center_for_vertex(center, key, n):
 
 
 def build_projected_positions(n):
+    """Build the initial projected positions used by the optimizer."""
     points, _, _ = build_octant_mesh(n)
     point_ij = point_ij_array(n)
     positions = np.full_like(points, np.nan)
@@ -234,6 +248,7 @@ def build_projected_positions(n):
 
 
 def _project_vertices_batch(vertices, point_ij, n):
+    """Project a batch of vertices onto sphere and boundary constraints."""
     projected = np.asarray(vertices, dtype=float).copy()
     projected = np.maximum(projected, 0.0)
 
@@ -288,6 +303,7 @@ def _project_vertices_batch(vertices, point_ij, n):
 
 
 def _project_centers_for_vertices_batch(centers, point_ij, n):
+    """Project a batch of triangle centers for their incident vertices."""
     projected = normalize(centers)
 
     pi = point_ij[:, 0]
@@ -315,14 +331,15 @@ def _project_centers_for_vertices_batch(centers, point_ij, n):
 
 
 def _triangle_xyz_from_positions(positions, triangle_keys):
+    """Gather triangle coordinates from a point array and triangle keys."""
     tri_ij = triangle_vertex_array(triangle_keys)
     return positions[tri_ij[:, :, 0], tri_ij[:, :, 1]]
 
 
 def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_every=25):
+    """Iteratively reduce spherical area variance under octant constraints."""
     _, triangle_keys, _ = build_octant_mesh(n)
     point_ij = point_ij_array(n)
-    point_keys = [tuple(idx) for idx in point_ij.tolist()]
     tri_ij = triangle_vertex_array(triangle_keys)
 
     positions = build_projected_positions(n)
@@ -367,7 +384,7 @@ def run_tension_equalizer(n, iterations=500, lr=0.2, lr_decay=True, verbose_ever
         np.add.at(move_count, (vertex_ij[:, 0], vertex_ij[:, 1]), 1)
 
         new_positions = np.full_like(positions, np.nan)
-        moves = np.zeros((len(point_keys), 3), dtype=float)
+        moves = np.zeros((len(point_ij), 3), dtype=float)
         valid_move = move_count[point_ij[:, 0], point_ij[:, 1]] > 0
         if np.any(valid_move):
             moves[valid_move] = (

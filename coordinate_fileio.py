@@ -7,6 +7,7 @@ from sphere_index_util import compact_point_count, full_point_count, iter_valid_
 
 
 def _canonicalize_triplet(i, j, k, xyz):
+    """Choose a canonical representative under coordinate-axis permutation."""
     idx = np.array([int(i), int(j), int(k)], dtype=int)
     xyz = np.asarray(xyz, dtype=float)
 
@@ -32,6 +33,7 @@ def _canonicalize_triplet(i, j, k, xyz):
 
 
 def _validate_positions_shape(n, positions):
+    """Validate the point-array shape used for serialization."""
     if not isinstance(positions, np.ndarray):
         raise TypeError("positions must be a numpy.ndarray.")
     expected_shape = (n + 1, n + 1, 3)
@@ -40,10 +42,12 @@ def _validate_positions_shape(n, positions):
 
 
 def _valid_position_mask(positions):
+    """Return a mask of lattice points that contain valid coordinates."""
     return ~np.isnan(positions[:, :, 0])
 
 
 def save_division_result(path, n, positions, index_averaging=True):
+    """Save symmetry-reduced point coordinates to the project JSON format."""
     _validate_positions_shape(n, positions)
 
     path = Path(path)
@@ -83,6 +87,7 @@ def save_division_result(path, n, positions, index_averaging=True):
 
 
 def load_division_result(path):
+    """Load a result JSON and expand it back to the full point array."""
     path = Path(path)
     payload = json.loads(path.read_text(encoding="utf-8"))
 
@@ -112,6 +117,7 @@ def load_division_result(path):
 
 
 def validate_division_result(path, tol=1e-12):
+    """Validate saved coordinates against index and geometric constraints."""
     path = Path(path)
     payload = json.loads(path.read_text(encoding="utf-8"))
 

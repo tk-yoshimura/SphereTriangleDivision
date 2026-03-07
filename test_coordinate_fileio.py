@@ -11,10 +11,12 @@ from sphere_index_util import iter_valid_ij
 
 
 def _empty_positions(n):
+    """Create an empty point array matching the project format."""
     return np.full((n + 1, n + 1, 3), np.nan, dtype=float)
 
 
 def _projected_positions(n):
+    """Build constraint-projected positions for validation tests."""
     points, _, _ = build_octant_mesh(n)
     positions = np.full_like(points, np.nan)
     for i, j in iter_valid_ij(n):
@@ -23,7 +25,10 @@ def _projected_positions(n):
 
 
 class CoordinateFileIoTest(unittest.TestCase):
+    """Tests for saving, loading, and validating result JSON files."""
+
     def test_save_is_sorted_and_compact(self):
+        """Save output should keep only sorted compact representative points."""
         n = 3
         positions = _empty_positions(n)
         positions[0, 0] = np.array([0.0, 0.0, 1.0])
@@ -52,6 +57,7 @@ class CoordinateFileIoTest(unittest.TestCase):
         self.assertEqual(actual_pairs, expected_pairs)
 
     def test_save_excludes_j_eq_k_representation(self):
+        """Equivalent j==k representatives should not be serialized twice."""
         n = 4
         positions = _empty_positions(n)
         positions[1, 1] = np.array([0.4, 0.4, 0.82])
@@ -68,6 +74,7 @@ class CoordinateFileIoTest(unittest.TestCase):
         self.assertEqual((rec["i"], rec["j"]), (1, 1))
 
     def test_load_restores_swapped_points(self):
+        """Loading should restore all permuted point coordinates."""
         n = 3
         payload = {
             "N": n,
@@ -89,6 +96,7 @@ class CoordinateFileIoTest(unittest.TestCase):
         np.testing.assert_allclose(positions[0, 3], np.array([0.0, 1.0, 0.0]))
 
     def test_validate_division_result_success(self):
+        """A projected mesh should pass validation checks."""
         n = 4
         positions = _projected_positions(n)
 
@@ -103,6 +111,7 @@ class CoordinateFileIoTest(unittest.TestCase):
         self.assertTrue(report["arc_constraint"]["ok"])
 
     def test_validate_division_result_success_n6(self):
+        """A larger projected mesh should also pass validation checks."""
         n = 6
         positions = _projected_positions(n)
 
@@ -120,6 +129,7 @@ class CoordinateFileIoTest(unittest.TestCase):
         self.assertTrue(report["arc_constraint"]["ok"])
 
     def test_validate_division_result_detects_constraint_violation(self):
+        """Validation should catch non-unit and off-arc coordinates."""
         n = 3
         payload = {
             "N": n,

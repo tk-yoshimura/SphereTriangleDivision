@@ -2,6 +2,7 @@ import numpy as np
 
 
 def normalize(v):
+    """Normalize a single vector or a batch of row vectors."""
     v = np.asarray(v, dtype=float)
     if v.ndim == 1:
         n = np.linalg.norm(v)
@@ -19,6 +20,7 @@ def normalize(v):
 
 
 def slerp(p0, p1, t):
+    """Spherically interpolate between two unit vectors."""
     p0 = normalize(p0)
     p1 = normalize(p1)
     dot = np.clip(np.dot(p0, p1), -1.0, 1.0)
@@ -30,4 +32,5 @@ def slerp(p0, p1, t):
 
 
 def geodesic_arc(p0, p1, samples=24):
+    """Sample points along the great-circle arc between two vectors."""
     return np.array([slerp(p0, p1, t) for t in np.linspace(0.0, 1.0, samples)])

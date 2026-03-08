@@ -24,6 +24,8 @@ internal static class DivisionResultJson {
                 ReadDDouble(xyzElem[2])
             );
 
+            xyz = ApplyIndexAveraging(xyz, i, j, k);
+
             ((int ci, int cj, int ck) key, Vector3D canonicalVec) = LatticeSymmetry.CanonicalizeTriplet(i, j, k, xyz);
             canonical[key] = canonicalVec;
         }

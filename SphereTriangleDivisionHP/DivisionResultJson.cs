@@ -67,42 +67,49 @@ internal static class DivisionResultJson {
             }
         }
 
-        using FileStream fs = File.Create(path);
-        using Utf8JsonWriter writer = new(fs, new JsonWriterOptions { Indented = true });
-
-        writer.WriteStartObject();
-        writer.WriteNumber("N", n);
-        writer.WritePropertyName("points");
-        writer.WriteStartArray();
-
-        foreach (var pair in canonical.OrderBy(p => p.Key.Item1).ThenBy(p => p.Key.Item2).ThenBy(p => p.Key.Item3)) {
+        var pointLines = canonical
+            .OrderBy(p => p.Key.Item1)
+            .ThenBy(p => p.Key.Item2)
+            .ThenBy(p => p.Key.Item3)
+            .Select(pair => {
             int i = pair.Key.Item1;
             int j = pair.Key.Item2;
             int k = pair.Key.Item3;
 
             if (i > j) {
-                continue;
+                return null;
             }
             if (j == k && i != j) {
-                continue;
+                return null;
             }
 
             Vector3D v = indexAveraging ? ApplyIndexAveraging(pair.Value, i, j, k) : pair.Value;
+            return $$"""
+                {
+                  "i": {{i}},
+                  "j": {{j}},
+                  "xyz": [
+                    {{FormatDDouble(v.X)}},
+                    {{FormatDDouble(v.Y)}},
+                    {{FormatDDouble(v.Z)}}
+                  ]
+                }
+                """;
+            })
+            .Where(text => text is not null)
+            .Cast<string>()
+            .ToList();
 
-            writer.WriteStartObject();
-            writer.WriteNumber("i", i);
-            writer.WriteNumber("j", j);
-            writer.WritePropertyName("xyz");
-            writer.WriteStartArray();
-            WriteDDoubleNumber(writer, v.X);
-            WriteDDoubleNumber(writer, v.Y);
-            WriteDDoubleNumber(writer, v.Z);
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-        }
+        string json = $$"""
+            {
+              "N": {{n}},
+              "points": [
+            {{string.Join(",\n", pointLines.Select(IndentPointJson))}}
+              ]
+            }
+            """;
 
-        writer.WriteEndArray();
-        writer.WriteEndObject();
+        File.WriteAllText(path, json + Environment.NewLine);
     }
 
     private static Vector3D ApplyIndexAveraging(Vector3D v, int i, int j, int k) {
@@ -131,7 +138,8 @@ internal static class DivisionResultJson {
             _ => throw new JsonException($"unsupported number token: {elem.ValueKind}")
         };
 
-    private static void WriteDDoubleNumber(Utf8JsonWriter writer, ddouble value) {
-        writer.WriteRawValue(value.ToString(), skipInputValidation: false);
-    }
+    private static string FormatDDouble(ddouble value) => value.ToString();
+
+    private static string IndentPointJson(string text) =>
+        string.Join(Environment.NewLine, text.Split('\n').Select(line => $"    {line}"));
 }

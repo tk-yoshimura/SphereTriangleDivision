@@ -16,10 +16,10 @@ internal sealed class Config {
         string inputDir = Path.GetFullPath(Path.Combine(baseDir, "../../../../", "results"));
         string outputDir = Path.GetFullPath(Path.Combine(baseDir, "../../../../", "results_high_precision"));
 
-        int iterations = 400000;
+        int iterations = 800000;
         ddouble lr = 0.2d;
         bool lrDecay = true;
-        int verboseEvery = 1000;
+        int verboseEvery = 10000;
         HashSet<int> targetNs = [];
 
         for (int i = 0; i < args.Length; i++) {

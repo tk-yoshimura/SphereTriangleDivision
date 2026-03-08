@@ -146,11 +146,7 @@ internal static class DivisionResultJson {
             return "1.0";
         }
 
-        const int max_digit = 26, max_length = max_digit + 2;
-
-        string str = value.ToString();
-
-        return str.Length >= max_length ? str[..max_length] : str;
+        return value.ToString();
     }
 
     private static string IndentPointJson(string text) =>

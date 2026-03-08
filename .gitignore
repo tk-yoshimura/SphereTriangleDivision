@@ -17,7 +17,8 @@
 *.bak
 
 # Cache/Options directory
-/.vs
+/**/.vs
+/**/.dotnet_cli
 /dll
 
 # NuGet Packages

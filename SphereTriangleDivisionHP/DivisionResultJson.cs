@@ -138,7 +138,20 @@ internal static class DivisionResultJson {
             _ => throw new JsonException($"unsupported number token: {elem.ValueKind}")
         };
 
-    private static string FormatDDouble(ddouble value) => value.ToString();
+    private static string FormatDDouble(ddouble value) {
+        if (value == 0) {
+            return "0.0";
+        }
+        if (value == 1) {
+            return "1.0";
+        }
+
+        const int max_digit = 26, max_length = max_digit + 2;
+
+        string str = value.ToString();
+
+        return str.Length >= max_length ? str[..max_length] : str;
+    }
 
     private static string IndentPointJson(string text) =>
         string.Join(Environment.NewLine, text.Split('\n').Select(line => $"    {line}"));

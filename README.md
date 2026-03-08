@@ -31,7 +31,8 @@ After optimization:
 - `sphere_index_util.py`: shared index utilities (`iter_valid_ij`, `k_from_ij`, validation/count helpers).
 - `sphere_division_algorithms.py`: shared mesh/area/constraint/optimizer algorithms used by both notebooks.
 - `sphere_division_visualization.py`: shared plotting utilities (octant mesh, history/distribution, before/after comparison).
-- `results/division_result_*.json`: point-coordinate JSON files where area optimization has sufficiently converged.
+- `results/division_result_*.json`: point-coordinate JSON files from the Python workflow; accuracy is conservatively estimated at at least 10 decimal digits.
+- `results_high_precision/division_result_*.json`: point-coordinate JSON files refined by the C# `DoubleDouble` workflow; accuracy is conservatively estimated at at least 25 decimal digits.
 - `figures/octant_n_squared_division.svg`: generated figure from the notebook example cell (`N=16`).
 - `figures/octant_n_squared_division_with_area_optimizer.svg`: before/after mesh comparison on the sphere.
 - `figures/octant_n_squared_division_with_area_optimizer_history.svg`: convergence history (`std`, `max_rel_dev`) and optimized area histogram.
